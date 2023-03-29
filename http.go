@@ -10,6 +10,21 @@ import (
 	"strconv"
 )
 
+type BaseRoutes struct {
+	FriendsPublicService      string
+	PartyPublicService        string
+	LightSwitchPublicService  string
+	UserSearchService         string
+	AccountPublicService      string
+	EulaTrackingPublicService string
+	EventsPublicService       string
+	FortniteContentWebsite    string
+	FortnitePublicService     string
+	PresencePublicService     string
+	AvatarService             string
+	StatsProxyPublicService   string
+}
+
 type SendIntentionData struct {
 	UserId   string
 	ClientId string
@@ -73,52 +88,37 @@ type JoinRequestPayload struct {
 	Meta       Meta       `json:"meta"`
 }
 
+var BaseRoute = BaseRoutes{
+	FriendsPublicService:      "https://friends-public-service-prod.ol.epicgames.com",
+	PartyPublicService:        "https://party-service-prod.ol.epicgames.com",
+	LightSwitchPublicService:  "https://lightswitch-public-service-prod06.ol.epicgames.com",
+	UserSearchService:         "https://user-search-service-prod.ol.epicgames.com",
+	AccountPublicService:      "https://account-public-service-prod.ol.epicgames.com",
+	EulaTrackingPublicService: "https://eulatracking-public-service-prod-m.ol.epicgames.com",
+	EventsPublicService:       "https://events-public-service-live.ol.epicgames.com",
+	FortniteContentWebsite:    "https://fortnitecontent-website-prod07.ol.epicgames.com",
+	FortnitePublicService:     "https://fortnite-public-service-prod11.ol.epicgames.com",
+	PresencePublicService:     "https://presence-public-service-prod.ol.epicgames.com",
+	AvatarService:             "https://avatar-service-prod.identity.live.on.epicgames.com",
+	StatsProxyPublicService:   "https://statsproxy-public-service-live.ol.epicgames.com",
+}
+
 //###################################
 //#         Request Handling        #
 //###################################
 
-func (c *Client) doNullableRequestUrlEncoded(method string, url string, payload []byte) *Error {
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(payload))
-	if err != nil {
-		return &Error{ErrorMessage: "Error creating Request."}
-	}
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
-	req.Header.Add("Content-Type", "application/json")
-	res, err := c.c.Do(req)
-	if res.StatusCode == 204 || res.StatusCode == 200 {
-		return nil
-	} else {
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return &Error{ErrorMessage: "IO Read Error."}
-		}
-		EpicError := &Error{}
-		err = json.Unmarshal(body, EpicError)
-		if err != nil {
-			return &Error{
-				ErrorMessage: "Error unmarshaling.",
-			}
-		}
-		if res.StatusCode == 409 {
-			newRev, convErr := strconv.Atoi(EpicError.EpicMessageVars[1])
-			if convErr != nil {
-				return &Error{ErrorMessage: "atoi convert error."}
-			}
-			c.Party.PartyRevision = newRev
-			return EpicError
-		}
-		return EpicError
-	}
-}
-
 // used for operations that doesnt send a neccessary payload back.
-func (c *Client) doNullableRequest(method string, url string, payload []byte) *Error {
+func (c *Client) doNullableRequest(method string, url string, payload []byte, urlEncoded bool) *Error {
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(payload))
 	if err != nil {
 		return &Error{ErrorMessage: "Error creating Request."}
 	}
 	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
-	req.Header.Add("Content-Type", "application/json")
+	if urlEncoded {
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	} else {
+		req.Header.Add("Content-Type", "application/json")
+	}
 	res, err := c.c.Do(req)
 	if res.StatusCode == 204 || res.StatusCode == 200 {
 		return nil
@@ -147,20 +147,27 @@ func (c *Client) doNullableRequest(method string, url string, payload []byte) *E
 }
 
 // used for operations that send a neccessary payload back.
-func (c *Client) doNonNullableRequest(method string, url string, payload []byte) (*Error, []byte) {
+func (c *Client) doNonNullableRequest(method string, url string, payload []byte, urlEncoded bool, out interface{}) (*Error, interface{}) {
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(payload))
 	if err != nil {
 		return &Error{ErrorMessage: "Error creating Request."}, nil
 	}
 	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
-	req.Header.Add("Content-Type", "application/json")
+	if urlEncoded {
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	} else {
+		req.Header.Add("Content-Type", "application/json")
+	}
 	res, err := c.c.Do(req)
 	if res.StatusCode == 204 || res.StatusCode == 200 {
 		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return &Error{ErrorMessage: "IO Read Error."}, nil
 		}
-		return nil, body
+		if err := json.Unmarshal(body, out); err != nil {
+			return nil, Error{ErrorMessage: err.Error()}
+		}
+		return nil, out
 	} else {
 		body, err := io.ReadAll(res.Body)
 		if err != nil {
@@ -186,13 +193,17 @@ func (c *Client) doNonNullableRequest(method string, url string, payload []byte)
 }
 
 //###################################
+//#            CreatorCode          #
+//###################################
+
+//###################################
 //#            Friends              #
 //###################################
 
 func (c *Client) Friends_Add_Or_Accept(friendId string) *Error {
 	url := fmt.Sprintf("https://friends-public-service-prod.ol.epicgames.com/friends/api/v1/%s/friends/%s", accountId, friendId)
 	payload := []byte{}
-	requestError := c.doNullableRequest("POST", url, payload)
+	requestError := c.doNullableRequest("POST", url, payload, false)
 	if requestError != nil {
 		return requestError
 	} else {
@@ -203,7 +214,7 @@ func (c *Client) Friends_Add_Or_Accept(friendId string) *Error {
 func (c *Client) Friends_Remove_Or_Decline(friendId string) *Error {
 	url := fmt.Sprintf("https://friends-public-service-prod.ol.epicgames.com/friends/api/v1/%s/friends/%s", accountId, friendId)
 	payload := []byte{}
-	requestError := c.doNullableRequest("DELETE", url, payload)
+	requestError := c.doNullableRequest("DELETE", url, payload, false)
 	if requestError != nil {
 		return requestError
 	} else {
@@ -214,7 +225,7 @@ func (c *Client) Friends_Remove_Or_Decline(friendId string) *Error {
 func (c *Client) Friends_Get_All() ([]Friend, *Error) {
 	url := fmt.Sprintf("https://friends-public-service-prod.ol.epicgames.com/friends/api/public/friends/%s", accountId)
 	payload := []byte{}
-	requestError, res := c.doNonNullableRequest("GET", url, payload)
+	requestError, res := c.doNonNullableRequest("GET", url, payload, false)
 	if requestError != nil {
 		return nil, requestError
 	} else {
@@ -233,7 +244,14 @@ func (c *Client) Friends_Get_Blocklist() ([]Friend, *Error) {
 	url := fmt.Sprintf("https://friends-public-service-prod.ol.epicgames.com/friends/api/v1/%s/blocklist", accountId)
 
 	payload := []byte{}
-	requestError, res := c.doNonNullableRequest("GET", url, payload)
+	var partyResponse PartyRes
+
+    // Unmarshal the response into partyResponse
+    _, err := c.doNonNullableRequest("GET", url, payload, false, &partyResponse)
+    if err != nil {
+        log.Fatalf("error unmarshaling response: %v", err)
+    }
+	requestError, res := c.doNonNullableRequest("GET", url, payload, false)
 	if requestError != nil {
 		return nil, requestError
 	} else {
@@ -248,13 +266,20 @@ func (c *Client) Friends_Get_Blocklist() ([]Friend, *Error) {
 	}
 }
 
+// Currently not working!!!
 func (c *Client) Friends_Set_Nickname(nickName string, friendID string) *Error {
 	uri := fmt.Sprintf("https://friends-public-service-prod.ol.epicgames.com/friends/api/v1/%s/friends/%s/alias", accountId, friendID)
-	encodedStr := url.QueryEscape(nickName)
+
+	// Encode the payload string as a URL encoded string
+	encodedPayload := url.QueryEscape(nickName)
+
+	// Convert the string to a []byte{}
+	bodyBytes := []byte(encodedPayload)
 	body := url.Values{}
 	body.Set("nick", nickName)
-	payload := []byte(encodedStr)
-	requestError := c.doNullableRequest("PUT", uri, payload)
+	//bodyString := body.Encode()
+	//payload := []byte(bodyString)
+	requestError := c.doNullableRequest("PUT", uri, bodyBytes, true)
 	if requestError != nil {
 		return requestError
 	} else {
@@ -274,7 +299,7 @@ func (c *Client) PartySendIntention(userId string) *Error {
 			ErrorMessage: "Error marshaling payload.",
 		}
 	}
-	requestError := c.doNullableRequest("POST", url, payload)
+	requestError := c.doNullableRequest("POST", url, payload, false)
 	if requestError != nil {
 		return requestError
 	} else {
@@ -289,7 +314,7 @@ func (c *Client) PartyLookup(partyID string) (*PartyLookupResponse, *Error) {
 			ErrorMessage: "Error marshalling payload.",
 		}
 	}
-	requestError, res := c.doNonNullableRequest("GET", url, payload)
+	requestError, res := c.doNonNullableRequest("GET", url, payload, false)
 	if requestError != nil {
 		return nil, requestError
 	} else {
