@@ -24,7 +24,11 @@ type BaseRoutes struct {
 	AvatarService             string
 	StatsProxyPublicService   string
 }
-
+type LightSwitchResponse struct {
+	Service string `json:"serviceInstanceId"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
 type SendIntentionData struct {
 	UserId   string
 	ClientId string
@@ -162,6 +166,7 @@ func (c *Client) doRequest(method string, url string, payload []byte, urlEncoded
 	res, err := c.c.Do(req)
 	if res.StatusCode == 204 || res.StatusCode == 200 {
 		body, err := io.ReadAll(res.Body)
+		fmt.Println(body)
 		if err != nil {
 			return &Error{ErrorMessage: "IO Read Error."}, nil
 		}
@@ -194,15 +199,29 @@ func (c *Client) doRequest(method string, url string, payload []byte, urlEncoded
 }
 
 //###################################
-//#            CreatorCode          #
+//#       LightSwitchService        #
 //###################################
+
+func (c *Client) LightSwitch_Status_Fortnite() (*LightSwitchResponse, *Error) {
+	url := "http://lightswitch-public-service-prod.ol.epicgames.com/lightswitch/api/service/fortnite/status"
+	payload := []byte{}
+	var lightSwitchResponse LightSwitchResponse
+	err, _ := c.doRequest("GET", url, payload, false, &lightSwitchResponse)
+	if err != nil {
+		return nil, err
+	} else {
+		return &lightSwitchResponse, nil
+	}
+}
+
+
 
 //###################################
 //#            Friends              #
 //###################################
 
 func (c *Client) Friends_Add_Or_Accept(friendId string) *Error {
-	url := fmt.Sprintf("https://friends-public-service-prod.ol.epicgames.com/friends/api/v1/%s/friends/%s", accountId, friendId)
+	url := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s", BaseRoute.FriendsPublicService, accountId, friendId)
 	payload := []byte{}
 	requestError := c.doNullableRequest("POST", url, payload, false)
 	if requestError != nil {
@@ -213,7 +232,7 @@ func (c *Client) Friends_Add_Or_Accept(friendId string) *Error {
 }
 
 func (c *Client) Friends_Remove_Or_Decline(friendId string) *Error {
-	url := fmt.Sprintf("https://friends-public-service-prod.ol.epicgames.com/friends/api/v1/%s/friends/%s", accountId, friendId)
+	url := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s", BaseRoute.FriendsPublicService, accountId, friendId)
 	payload := []byte{}
 	requestError := c.doNullableRequest("DELETE", url, payload, false)
 	if requestError != nil {
@@ -224,14 +243,14 @@ func (c *Client) Friends_Remove_Or_Decline(friendId string) *Error {
 }
 
 func (c *Client) Friends_Get_All() ([]Friend, *Error) {
-	url := fmt.Sprintf("https://friends-public-service-prod.ol.epicgames.com/friends/api/public/friends/%s", accountId)
+	url := fmt.Sprintf("%s/friends/api/public/friends/%s", BaseRoute.FriendsPublicService, accountId)
 	payload := []byte{}
 	var friendList []Friend
 	err, _ := c.doRequest("GET", url, payload, false, &friendList)
 	if err != nil {
 		return nil, err
 	} else {
-		return *&friendList, nil
+		return friendList, nil
 	}
 }
 
@@ -249,7 +268,7 @@ func (c *Client) Friends_Get_Blocklist() ([]Friend, *Error) {
 
 // Currently not working!!! Problem is the body.
 func (c *Client) Friends_Set_Nickname(nickName string, friendID string) *Error {
-	uri := fmt.Sprintf("https://friends-public-service-prod.ol.epicgames.com/friends/api/v1/%s/friends/%s/alias", accountId, friendID)
+	uri := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s/alias", BaseRoute.FriendsPublicService, accountId, friendID)
 	encodedPayload := url.QueryEscape(nickName)
 	bodyBytes := []byte(encodedPayload)
 	body := url.Values{}
@@ -269,7 +288,7 @@ func (c *Client) Friends_Set_Nickname(nickName string, friendID string) *Error {
 //###################################
 
 func (c *Client) PartySendIntention(userId string) *Error {
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/members/%s/intentions/%s", userId, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/members/%s/intentions/%s", BaseRoute.PartyPublicService, userId, accountId)
 	payload, err := json.Marshal(&IntentionPayload{Urn: ""})
 	if err != nil {
 		return &Error{
@@ -285,7 +304,7 @@ func (c *Client) PartySendIntention(userId string) *Error {
 }
 
 func (c *Client) PartyLookup(partyID string) (*PartyLookupResponse, *Error) {
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/parties/%s", partyID)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s", BaseRoute.PartyPublicService, partyID)
 	payload, err := json.Marshal(&IntentionPayload{Urn: ""})
 	if err != nil {
 		return nil, &Error{
@@ -305,7 +324,7 @@ func (c *Client) PartyLookup(partyID string) (*PartyLookupResponse, *Error) {
 }
 
 func PartyLookupPing(c *http.Client, userId string, clientId string) *PartyLookupResponse {
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/user/%s/pings/%s/parties", clientId, userId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/user/%s/pings/%s/parties", BaseRoute.PartyPublicService, clientId, userId)
 	payload, err := json.Marshal(&IntentionPayload{Urn: ""})
 	if err != nil {
 		fmt.Println("error marschaling")
@@ -341,7 +360,7 @@ func PartyLookupPing(c *http.Client, userId string, clientId string) *PartyLooku
 }
 
 func PartySendInvite(c *http.Client, userId string) PartyLookupResponse {
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/user/%s", userId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/user/%s", BaseRoute.PartyPublicService, userId)
 	payload := map[string]string{
 		"urn:epic:cfg:build-id_s":        "1:3:24395311",
 		"urn:epic:conn:platform_s":       "WIN",
@@ -381,7 +400,7 @@ func PartySendInvite(c *http.Client, userId string) PartyLookupResponse {
 }
 
 func PartySendJoinRequest(c *http.Client, jid string, partyId string) PartyLookupResponse {
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/parties/%s/members/%s/join", partyId, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/join", BaseRoute.PartyPublicService, partyId, accountId)
 	payload := map[string]interface{}{
 		"connection": map[string]interface{}{
 			"id": jid,
@@ -454,7 +473,7 @@ func (c *Client) PartyUpdateMemberMeta(p *PartyMemberMeta) PartyLookupResponse {
 	} else {
 		characterString = fmt.Sprintf("/Game/Athena/Items/Cosmetics/Characters/%s.%s", p.CosmeticLoadout.Character, p.CosmeticLoadout.Character)
 	}
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/parties/%s/members/%s/meta", c.Party.Id, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, accountId)
 	payload := map[string]interface{}{
 		"delete":   []string{},
 		"revision": 0,
@@ -501,7 +520,7 @@ func (c *Client) PartyUpdateMemberMeta(p *PartyMemberMeta) PartyLookupResponse {
 }
 
 func SetEmote(c *http.Client, partyId string, eID string) PartyLookupResponse {
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/parties/%s/members/%s/meta", partyId, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, partyId, accountId)
 	payload := map[string]interface{}{
 		"delete":   []string{},
 		"revision": 2,
@@ -547,7 +566,7 @@ func SetEmote(c *http.Client, partyId string, eID string) PartyLookupResponse {
 }
 
 func (client *Client) SetCustomKey(newKey string) PartyLookupResponse {
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/parties/%s", client.Party.Id)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s", BaseRoute.PartyPublicService, accountId)
 	payload := map[string]interface{}{
 		"revision": client.Party.PartyRevision,
 		"meta": map[string]interface{}{
@@ -614,7 +633,7 @@ func SetReadiness(c *http.Client, partyId string, ready bool) PartyLookupRespons
 		fmt.Println(" readiness: not ready")
 	}
 
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/parties/%s/members/%s/meta", partyId, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, partyId, accountId)
 	payload := map[string]interface{}{
 		"delete":   []string{},
 		"revision": 1,
@@ -661,7 +680,7 @@ func SetReadiness(c *http.Client, partyId string, ready bool) PartyLookupRespons
 
 // "Default:ActivityName_s":"","Default:PlaylistData_j":"{\"PlaylistData\":{\"playlistName\":\"Playlist_ShowdownAlt_Duos\",\"tournamentId\":\"epicgames_Arena_S24_Duos\",\"eventWindowId\":\"Arena_S24_Division6_Duos\",\"regionId\":\"EU\",\"linkId\":{\"mnemonic\":\"tournament_epicgames_arena_duos\",\"version\":1},\"bGracefullyUpgraded\":false,\"matchmakingRulePreset\":\"RespectParties\"}}","Default:MatchmakingState_j":"{\"MatchmakingState\":{\"currentMatchmakingState\":{\"linkId\":{\"mnemonic\":\"tournament_epicgames_arena_duos\",\"version\":1},\"requester\":\"INVALID\",\"dataStateId\":12199},\"requestedMatchmakingState\":{\"linkId\":{\"mnemonic\":\"playlist_defaultduo\",\"version\":-1},\"requester\":\"INVALID\",\"dataStateId\":12199},\"coordinatorBroadcast\":\"ReadyForRequests\"}}","Default:ActivityType_s":"BR"
 func (c *Client) SetPlaylist() PartyLookupResponse {
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/parties/%s", c.Party.Id)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s", BaseRoute.PartyPublicService, c.Party.Id)
 	payload := map[string]interface{}{
 		"revision": c.Party.PartyRevision,
 		"meta": map[string]interface{}{
@@ -722,7 +741,7 @@ func (c *Client) SetPlaylist() PartyLookupResponse {
 	return PartyLookupResponse{}
 }
 func (c *Client) PartyLeave() PartyLookupResponse {
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/parties/%s/members/%s", c.Party.Id, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s", BaseRoute.PartyPublicService, c.Party.Id, accountId)
 	payload := map[string]interface{}{
 		"connection": map[string]interface{}{
 			"id": c.Party.Members[0].JID,
@@ -771,9 +790,8 @@ func (c *Client) PartyLeave() PartyLookupResponse {
 	return *response
 }
 func (c *Client) Set_Skin(SkinID string) *Error {
-	characterString := ""
-	characterString = fmt.Sprintf("/Game/Athena/Items/Cosmetics/Characters/%s.%s", SkinID, SkinID)
-	url := fmt.Sprintf("https://party-service-prod.ol.epicgames.com/party/api/v1/Fortnite/parties/%s/members/%s/meta", c.Party.Id, accountId)
+	characterString := fmt.Sprintf("/Game/Athena/Items/Cosmetics/Characters/%s.%s", SkinID, SkinID)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, accountId)
 	payload := map[string]interface{}{
 		"delete":   []string{},
 		"revision": c.Party.PartyRevision,

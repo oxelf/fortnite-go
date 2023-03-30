@@ -126,7 +126,7 @@ func (client *Client) open(auth string) error {
 	}
 	stamp := time.Now().UTC().Format("2006-01-02T15:04:05.999Z")
 	fmt.Print("Sended Presence with stamp: " + stamp)
-	err = client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<presence><status>{\"Status\":\"Battle Royale Lobby - 1/16\",\"bIsPlaying\":true,\"bIsJoinable\":true,\"bHasVoiceSupport\":false,\"ProductName\":\"Fortnite\",\"SessionId\":\"\",\"Properties\":{\"OverrideAppId_s\":\"Fortnite\",\"FortPartySize_i\":1,\"FortSubGame_i\":1,\"InUnjoinableMatch_b\":false}}</status><delay stamp=\"%s\" xmlns=\"urn:xmpp:delay\"/></presence>", stamp)))
+	err = client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<presence><status>{\"Status\":\"Moin Leander\",\"bIsPlaying\":true,\"bIsJoinable\":true,\"bHasVoiceSupport\":false,\"ProductName\":\"Fortnite\",\"SessionId\":\"\",\"Properties\":{\"OverrideAppId_s\":\"Fortnite\",\"FortPartySize_i\":1,\"FortSubGame_i\":1,\"InUnjoinableMatch_b\":false}}</status><delay stamp=\"%s\" xmlns=\"urn:xmpp:delay\"/></presence>", stamp)))
 	if err != nil {
 		return err
 	}
