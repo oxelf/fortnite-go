@@ -1,10 +1,7 @@
 package main
 
 import (
-	"encoding/json"
-	"encoding/xml"
 	"fmt"
-	"strings"
 )
 
 var accountId = "49748cfe40334a129ca3620252abfba2"
@@ -47,14 +44,16 @@ func main() {
 		XMPP:       true,
 		Connection: "Fortnite",
 		AuthClient: AuthClients.Fortnite_PC_Client}
-	val, err := Get_OauthToken_By_AuthCode("ec079bf1bd9e42f7861f3681c76e1c3f", Base64AuthClients.Fortnite_PC_Client, true)
+	url := GetAuthCodeUrl(AuthClients.Fortnite_IOS_Client)
+	fmt.Println(url)
+	val, err := Get_OauthToken_By_AuthCode("d27b3a32a70749df8c97a9009bf79355", Base64AuthClients.Fortnite_IOS_Client, true)
 	if err != nil {
 		fmt.Println(err.Error())
 	} else {
 		fmt.Println("Acc token: " + val.AccessToken)
-		config = ClientConfig{
-			Token: val.AccessToken, AccountID: val.AccountID,
-		}
+		config.Token = val.AccessToken
+		config.AccountID = val.AccountID
+		Create_DeviceAuth(val.AccessToken, val.AccountID)
 	}
 	client, err := NewClient(config)
 	if err != nil {
@@ -114,76 +113,79 @@ func main() {
 			client.PartyLeave()
 		})
 		client.Listen()
+		// for {
+
+		// 	if msg, err := client.Read(); err != nil {
+		// 		fmt.Printf("ERROR %v\n", err)
+		// 		break
+		// 	} else {
+
+		// 		if strings.HasPrefix(msg, "<presence") {
+
+		// 			presence := &Presence{}
+		// 			err := xml.Unmarshal([]byte(msg), presence)
+		// 			if err != nil {
+		// 				//TODO only log
+		// 				continue
+		// 			}
+
+		// 			status := &Status{}
+		// 			err = json.Unmarshal([]byte(presence.Status), status)
+		// 			if err != nil {
+		// 				//TODO only log
+		// 				continue
+		// 			}
+
+		// 			fmt.Printf("<Presence>: type:%s,\n from: %#v,\n status: %#v", presence.Type, presence.From, status)
+		// 		}
+		// 		if strings.HasPrefix(msg, "<message") {
+
+		// 			message := &Message{}
+		// 			err := xml.Unmarshal([]byte(msg), message)
+		// 			if err != nil {
+		// 				//TODO only log
+		// 				continue
+		// 			}
+		// 			body := &Body{}
+		// 			Uerr := json.Unmarshal(message.Body.RawJSON, &body)
+		// 			if Uerr != nil {
+		// 				fmt.Println("unmarshalling error.")
+		// 			}
+		// 			switch body.Type {
+		// 			case "com.epicgames.social.party.notification.v0.PING":
+		// 				fmt.Printf("Ping from: %s\n", body.PingerDN)
+		// 				res := client.PartyLookupPing(body.PingerID, client.Config.AccountID)
+		// 				fmt.Printf("Party id: %s\n", res.ID)
+		// 				fmt.Printf("jid: %s", message.To)
+		// 				resp := client.PartySendJoinRequest(message.To, res.ID)
+		// 				fmt.Println("resp:" + resp.ID)
+		// 			case "com.epicgames.social.party.notification.v0.MEMBER_JOINED":
+		// 				fmt.Println("joined: " + body.AccountDN)
+		// 			case "com.epicgames.social.party.notification.v0.MEMBER_NEW_CAPTAIN":
+		// 				fmt.Printf("new captain: %s, revision: %d\n", body.CaptainId, body.Revision)
+		// 				client.Party.Id = body.PartyId
+		// 				if body.Revision != 0 {
+		// 					client.Party.PartyRevision = body.Revision
+		// 				}
+		// 				setPlaylist := client.SetPlaylist()
+		// 				fmt.Println(setPlaylist)
+		// 				setKey := client.SetCustomKey("1234")
+		// 				fmt.Println(setKey)
+		// 				client.PartyLeave()
+		// 			case "com.epicgames.social.party.notification.v0.PARTY_UPDATED":
+		// 				fmt.Printf("Party updated from: %s, revision: %d", body.AccountDN, body.Revision)
+		// 				if body.Revision != 0 {
+		// 					client.Party.PartyRevision = body.Revision
+		// 				}
+		// 			default:
+		// 				continue
+		// 			}
+
+		// 		}
+		// 	}
 		for {
-
-			if msg, err := client.Read(); err != nil {
-				fmt.Printf("ERROR %v\n", err)
-				break
-			} else {
-
-				if strings.HasPrefix(msg, "<presence") {
-
-					presence := &Presence{}
-					err := xml.Unmarshal([]byte(msg), presence)
-					if err != nil {
-						//TODO only log
-						continue
-					}
-
-					status := &Status{}
-					err = json.Unmarshal([]byte(presence.Status), status)
-					if err != nil {
-						//TODO only log
-						continue
-					}
-
-					fmt.Printf("<Presence>: type:%s,\n from: %#v,\n status: %#v", presence.Type, presence.From, status)
-				}
-				if strings.HasPrefix(msg, "<message") {
-
-					message := &Message{}
-					err := xml.Unmarshal([]byte(msg), message)
-					if err != nil {
-						//TODO only log
-						continue
-					}
-					body := &Body{}
-					Uerr := json.Unmarshal(message.Body.RawJSON, &body)
-					if Uerr != nil {
-						fmt.Println("unmarshalling error.")
-					}
-					switch body.Type {
-					case "com.epicgames.social.party.notification.v0.PING":
-						fmt.Printf("Ping from: %s\n", body.PingerDN)
-						res := client.PartyLookupPing(body.PingerID, client.Config.AccountID)
-						fmt.Printf("Party id: %s\n", res.ID)
-						fmt.Printf("jid: %s", message.To)
-						resp := client.PartySendJoinRequest(message.To, res.ID)
-						fmt.Println("resp:" + resp.ID)
-					case "com.epicgames.social.party.notification.v0.MEMBER_JOINED":
-						fmt.Println("joined: " + body.AccountDN)
-					case "com.epicgames.social.party.notification.v0.MEMBER_NEW_CAPTAIN":
-						fmt.Printf("new captain: %s, revision: %d\n", body.CaptainId, body.Revision)
-						client.Party.Id = body.PartyId
-						if body.Revision != 0 {
-							client.Party.PartyRevision = body.Revision
-						}
-						setPlaylist := client.SetPlaylist()
-						fmt.Println(setPlaylist)
-						setKey := client.SetCustomKey("1234")
-						fmt.Println(setKey)
-						client.PartyLeave()
-					case "com.epicgames.social.party.notification.v0.PARTY_UPDATED":
-						fmt.Printf("Party updated from: %s, revision: %d", body.AccountDN, body.Revision)
-						if body.Revision != 0 {
-							client.Party.PartyRevision = body.Revision
-						}
-					default:
-						continue
-					}
-
-				}
-			}
+			client.Listen()
 		}
+		// }
 	}
 }

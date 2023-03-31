@@ -35,10 +35,15 @@ type OauthToken struct {
 	DisplayName      string    `json:"displayName"`
 	ProductID        string    `json:"product_id"`
 }
+type DeviceAuth struct {
+	DeviceID  string `json:"deviceId"`
+	AccountID string `json:"accountId"`
+	Secret    string `json:"secret"`
+}
 
 var Base64AuthClients = base64AuthClients{
 	Fortnite_PC_Client:     "ZWM2ODRiOGM2ODdmNDc5ZmFkZWEzY2IyYWQ4M2Y1YzY6ZTFmMzFjMjExZjI4NDEzMTg2MjYyZDM3YTEzZmM4NGQ=",
-	Fortnite_IOS_Client:    "3446cd72694c4a4485d81b77adbb2141:9209d4a5e25a457fb9b07489d313b41a",
+	Fortnite_IOS_Client:    "MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE=",
 	Fortnite_SWITCH_Client: "OThmN2U0MmMyZTNhNGY4NmE3NGViNDNmYmI0MWVkMzk6MGEyNDQ5YTItMDAxYS00NTFlLWFmZWMtM2U4MTI5MDFjNGQ3",
 }
 
@@ -46,6 +51,11 @@ var AuthClients = authclients{
 	Fortnite_IOS_Client:    "3446cd72694c4a4485d81b77adbb2141",
 	Fortnite_PC_Client:     "ec684b8c687f479fadea3cb2ad83f5c6",
 	Fortnite_SWITCH_Client: "98f7e42c2e3a4f86a74eb43fbb41ed39",
+}
+
+func GetAuthCodeUrl(authClient string) string {
+	url := fmt.Sprintf("https://www.epicgames.com/id/api/redirect?clientId=%s&responseType=code", authClient)
+	return url
 }
 
 // Gets an Oauth Token for the given parameters and the Authcode, which you can get from this url: https://www.epicgames.com/id/api/redirect?clientId=ec684b8c687f479fadea3cb2ad83f5c6&responseType=code
@@ -93,4 +103,36 @@ func Get_OauthToken_By_AuthCode(code string, base64Client string, eg1 bool) (*Oa
 	}
 
 	return oauthToken, nil
+}
+
+func Create_DeviceAuth(token string, accountId string) (*DeviceAuth, *Error) {
+	fmt.Println("getting device auth")
+	uri := fmt.Sprint("https://account-public-service-prod.ol.epicgames.com/account/api/public/account/" + accountId + "/deviceAuth")
+	data := url.Values{}
+
+	req, err := http.NewRequest("POST", uri, strings.NewReader(data.Encode()))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	deviceAuth := &DeviceAuth{}
+
+	err = json.Unmarshal(body, &deviceAuth)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return deviceAuth, nil
 }
