@@ -518,6 +518,70 @@ func (c *Client) PartyUpdateMemberMeta(p *PartyMemberMeta) PartyLookupResponse {
 
 	return *response
 }
+func (c *Client) PartySendInitialMemberData(p *PartyMemberMeta) PartyLookupResponse {
+	emoteString := ""
+	characterString := ""
+	if p.Location == "" {
+		p.Location = "PreLobby"
+	}
+	if p.Emote == "" {
+		p.Emote = "None"
+		emoteString = ""
+	} else {
+		emoteString = fmt.Sprintf("/Game/Athena/Items/Cosmetics/Dances/%s.%s", p.Emote, p.Emote)
+	}
+	if p.CosmeticLoadout.Character == "" {
+		p.CosmeticLoadout.Character = "None"
+		characterString = "None"
+	} else {
+		characterString = fmt.Sprintf("/Game/Athena/Items/Cosmetics/Characters/%s.%s", p.CosmeticLoadout.Character, p.CosmeticLoadout.Character)
+	}
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, accountId)
+	payload := map[string]interface{}{
+		"delete":   []string{},
+		"revision": 0,
+		"override": map[string]interface{}{},
+		"update": map[string]interface{}{
+			"Default:AthenaCosmeticLoadout_j": fmt.Sprintf("{\"AthenaCosmeticLoadout\":{\"characterDef\":\"%s\",\"characterEKey\":\"\",\"backpackDef\":\"None\",\"backpackEKey\":\"\",\"pickaxeDef\":\"/Game/Athena/Items/Cosmetics/Pickaxes/Pickaxe_ID_015_HolidayCandyCane.Pickaxe_ID_015_HolidayCandyCane\",\"pickaxeEKey\":\"\",\"contrailDef\":\"/Game/Athena/Items/Cosmetics/Contrails/Contrail_RedPepper.Contrail_RedPepper\",\"contrailEKey\":\"\",\"scratchpad\":[],\"cosmeticStats\":[{\"statName\":\"TotalVictoryCrowns\",\"statValue\":6},{\"statName\":\"TotalRoyalRoyales\",\"statValue\":0},{\"statName\":\"HasCrown\",\"statValue\":0}]}}", characterString),
+			"Default:FrontendEmote_j":         fmt.Sprintf("{\"FrontendEmote\":{\"emoteItemDef\":\"%s\",\"emoteEKey\":\"\",\"emoteSection\":-1}}", emoteString),
+		},
+	}
+
+	payloadbytes, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println("error marschaling")
+	}
+
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
+
+	if err != nil {
+		fmt.Println("error")
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Add("Content-Type", "application/json")
+	resp, requestError := c.c.Do(req)
+	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
+	if requestError != nil {
+		fmt.Println("req error: " + requestError.Error())
+		fmt.Println("request error.")
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("io read error.")
+	}
+
+	response := &PartyLookupResponse{}
+
+	err = json.Unmarshal(body, response)
+	if err != nil {
+		fmt.Println("error unmarshaling.")
+	}
+
+	return *response
+}
+
 
 func SetEmote(c *http.Client, partyId string, eID string) PartyLookupResponse {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, partyId, accountId)

@@ -23,6 +23,7 @@ type Client struct {
 	joinCallback        func(*PartyJoin)
 	NewCaptainCallback  func(*PartyNewCaptain)
 	memberLeftCallback  func(*PartyMemberLeft)
+	friendshipRequestCallback   func(*FriendshipRequest)
 	skinChangedCallback func(string, string)
 }
 type Party struct {
@@ -126,7 +127,7 @@ func (client *Client) open(auth string) error {
 	}
 	stamp := time.Now().UTC().Format("2006-01-02T15:04:05.999Z")
 	fmt.Print("Sended Presence with stamp: " + stamp)
-	err = client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<presence><status>{\"Status\":\"Moin Leander\",\"bIsPlaying\":true,\"bIsJoinable\":true,\"bHasVoiceSupport\":false,\"ProductName\":\"Fortnite\",\"SessionId\":\"\",\"Properties\":{\"OverrideAppId_s\":\"Fortnite\",\"FortPartySize_i\":1,\"FortSubGame_i\":1,\"InUnjoinableMatch_b\":false}}</status><delay stamp=\"%s\" xmlns=\"urn:xmpp:delay\"/></presence>", stamp)))
+	err = client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<presence><status>{\"Status\":\"Battle Royale Lobby - 1/16\",\"bIsPlaying\":true,\"bIsJoinable\":true,\"bHasVoiceSupport\":false,\"ProductName\":\"Fortnite\",\"SessionId\":\"\",\"Properties\":{\"OverrideAppId_s\":\"Fortnite\",\"FortPartySize_i\":1,\"FortSubGame_i\":1,\"InUnjoinableMatch_b\":false}}</status><delay stamp=\"%s\" xmlns=\"urn:xmpp:delay\"/></presence>", stamp)))
 	if err != nil {
 		return err
 	}
@@ -308,6 +309,18 @@ func (c *Client) Listen() {
 						continue
 					}
 					c.memberLeftCallback(&party_member_left)
+				
+				case "FRIENDSHIP_REQUEST":
+					var friendshipRequest FriendshipRequest
+					err := json.Unmarshal(message.Body.RawJSON, &friendshipRequest)
+					if err != nil {
+						fmt.Println("unmarshalling error.")
+						continue
+					}
+					c.friendshipRequestCallback(&friendshipRequest)
+				case "com.epicgames.friends.core.apiobjects.Friend":
+					fmt.Println("new message: ")
+					fmt.Println(msg)
 				case "com.epicgames.social.party.notification.v0.MEMBER_STATE_UPDATED":
 					var party_member_updated PartyMemberUpdated
 					err := json.Unmarshal(message.Body.RawJSON, &party_member_updated)
@@ -360,6 +373,10 @@ func (c *Client) OnNewCaptain(callback func(c *PartyNewCaptain)) {
 }
 func (c *Client) OnMemberLeft(callback func(*PartyMemberLeft)) {
 	c.memberLeftCallback = callback
+}
+
+func (c *Client) OnFriendRequest(callback func(*FriendshipRequest)) {
+	c.friendshipRequestCallback = callback
 }
 func (c *Client) OnSkinChanged(callback func(SkinID string, accountID string)) {
 	c.skinChangedCallback = callback

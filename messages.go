@@ -81,3 +81,10 @@ type Body struct {
 	AccountId  string            `json:"account_id"`
 	AccountDN  string            `json:"account_dn"`
 }
+
+type FriendshipRequest struct {
+	From string `json:"from"`
+	To string	`json:"to"`
+	Timestamp time.Time `json:"timestamp"`
+	Status		string `json:"status"`
+}
