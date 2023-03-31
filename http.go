@@ -117,7 +117,7 @@ func (c *Client) doNullableRequest(method string, url string, payload []byte, ur
 	if err != nil {
 		return &Error{ErrorMessage: "Error creating Request."}
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	if urlEncoded {
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	} else {
@@ -157,7 +157,7 @@ func (c *Client) doRequest(method string, url string, payload []byte, urlEncoded
 	if err != nil {
 		return &Error{ErrorMessage: "Error creating Request."}, nil
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	if urlEncoded {
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	} else {
@@ -213,8 +213,6 @@ func (c *Client) LightSwitch_Status_Fortnite() (*LightSwitchResponse, *Error) {
 		return &lightSwitchResponse, nil
 	}
 }
-
-
 
 //###################################
 //#            Friends              #
@@ -323,7 +321,7 @@ func (c *Client) PartyLookup(partyID string) (*PartyLookupResponse, *Error) {
 	}
 }
 
-func PartyLookupPing(c *http.Client, userId string, clientId string) *PartyLookupResponse {
+func (c *Client) PartyLookupPing(userId string, clientId string) *PartyLookupResponse {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/user/%s/pings/%s/parties", BaseRoute.PartyPublicService, clientId, userId)
 	payload, err := json.Marshal(&IntentionPayload{Urn: ""})
 	if err != nil {
@@ -334,9 +332,9 @@ func PartyLookupPing(c *http.Client, userId string, clientId string) *PartyLooku
 		fmt.Println("error")
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.Do(req)
+	resp, requestError := c.c.Do(req)
 	if requestError != nil {
 		fmt.Println("request error.")
 	}
@@ -359,7 +357,7 @@ func PartyLookupPing(c *http.Client, userId string, clientId string) *PartyLooku
 	}
 }
 
-func PartySendInvite(c *http.Client, userId string) PartyLookupResponse {
+func (c *Client) PartySendInvite(userId string) PartyLookupResponse {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/user/%s", BaseRoute.PartyPublicService, userId)
 	payload := map[string]string{
 		"urn:epic:cfg:build-id_s":        "1:3:24395311",
@@ -377,9 +375,9 @@ func PartySendInvite(c *http.Client, userId string) PartyLookupResponse {
 		fmt.Println("error")
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.Do(req)
+	resp, requestError := c.c.Do(req)
 	if requestError != nil {
 		fmt.Println("request error.")
 	}
@@ -399,7 +397,7 @@ func PartySendInvite(c *http.Client, userId string) PartyLookupResponse {
 	return *response
 }
 
-func PartySendJoinRequest(c *http.Client, jid string, partyId string) PartyLookupResponse {
+func (c *Client) PartySendJoinRequest(jid string, partyId string) PartyLookupResponse {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/join", BaseRoute.PartyPublicService, partyId, accountId)
 	payload := map[string]interface{}{
 		"connection": map[string]interface{}{
@@ -426,9 +424,9 @@ func PartySendJoinRequest(c *http.Client, jid string, partyId string) PartyLooku
 		fmt.Println("error")
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.Do(req)
+	resp, requestError := c.c.Do(req)
 	if requestError != nil {
 		fmt.Println("req error: " + requestError.Error())
 		fmt.Println("request error.")
@@ -495,7 +493,7 @@ func (c *Client) PartyUpdateMemberMeta(p *PartyMemberMeta) PartyLookupResponse {
 		fmt.Println("error")
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
 	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
@@ -558,7 +556,7 @@ func (c *Client) PartySendInitialMemberData(p *PartyMemberMeta) PartyLookupRespo
 		fmt.Println("error")
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
 	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
@@ -582,8 +580,7 @@ func (c *Client) PartySendInitialMemberData(p *PartyMemberMeta) PartyLookupRespo
 	return *response
 }
 
-
-func SetEmote(c *http.Client, partyId string, eID string) PartyLookupResponse {
+func (c *Client) SetEmote(partyId string, eID string) PartyLookupResponse {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, partyId, accountId)
 	payload := map[string]interface{}{
 		"delete":   []string{},
@@ -605,9 +602,9 @@ func SetEmote(c *http.Client, partyId string, eID string) PartyLookupResponse {
 		fmt.Println("error")
 	}
 
-	request.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	request.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	request.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.Do(request)
+	resp, requestError := c.c.Do(request)
 	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
 	if requestError != nil {
 		fmt.Println("req error: " + requestError.Error())
@@ -629,10 +626,10 @@ func SetEmote(c *http.Client, partyId string, eID string) PartyLookupResponse {
 	return *response
 }
 
-func (client *Client) SetCustomKey(newKey string) PartyLookupResponse {
+func (c *Client) SetCustomKey(newKey string) PartyLookupResponse {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s", BaseRoute.PartyPublicService, accountId)
 	payload := map[string]interface{}{
-		"revision": client.Party.PartyRevision,
+		"revision": c.Party.PartyRevision,
 		"meta": map[string]interface{}{
 			"delete": []string{},
 			"update": map[string]interface{}{
@@ -651,9 +648,9 @@ func (client *Client) SetCustomKey(newKey string) PartyLookupResponse {
 		fmt.Println("error")
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := client.c.Do(req)
+	resp, requestError := c.c.Do(req)
 	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
 	if requestError != nil {
 		fmt.Println("req error: " + requestError.Error())
@@ -674,8 +671,8 @@ func (client *Client) SetCustomKey(newKey string) PartyLookupResponse {
 		if convErr != nil {
 
 		}
-		client.Party.PartyRevision = newRev
-		client.SetCustomKey(newKey)
+		c.Party.PartyRevision = newRev
+		c.SetCustomKey(newKey)
 	}
 
 	response := &PartyLookupResponse{}
@@ -687,7 +684,7 @@ func (client *Client) SetCustomKey(newKey string) PartyLookupResponse {
 
 	return *response
 }
-func SetReadiness(c *http.Client, partyId string, ready bool) PartyLookupResponse {
+func (c *Client) SetReadiness(partyId string, ready bool) PartyLookupResponse {
 	var readyString = ""
 	if ready {
 		readyString = "Ready"
@@ -697,7 +694,7 @@ func SetReadiness(c *http.Client, partyId string, ready bool) PartyLookupRespons
 		fmt.Println(" readiness: not ready")
 	}
 
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, partyId, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, partyId, c.Config.AccountID)
 	payload := map[string]interface{}{
 		"delete":   []string{},
 		"revision": 1,
@@ -718,9 +715,9 @@ func SetReadiness(c *http.Client, partyId string, ready bool) PartyLookupRespons
 		fmt.Println("error")
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.Do(req)
+	resp, requestError := c.c.Do(req)
 	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
 	if requestError != nil {
 		fmt.Println("req error: " + requestError.Error())
@@ -765,7 +762,7 @@ func (c *Client) SetPlaylist() PartyLookupResponse {
 		fmt.Println("error")
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
 	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
@@ -805,7 +802,7 @@ func (c *Client) SetPlaylist() PartyLookupResponse {
 	return PartyLookupResponse{}
 }
 func (c *Client) PartyLeave() PartyLookupResponse {
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s", BaseRoute.PartyPublicService, c.Party.Id, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s", BaseRoute.PartyPublicService, c.Party.Id, c.Config.AccountID)
 	payload := map[string]interface{}{
 		"connection": map[string]interface{}{
 			"id": c.Party.Members[0].JID,
@@ -831,7 +828,7 @@ func (c *Client) PartyLeave() PartyLookupResponse {
 		fmt.Println("error")
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
 	if requestError != nil {
@@ -855,7 +852,7 @@ func (c *Client) PartyLeave() PartyLookupResponse {
 }
 func (c *Client) Set_Skin(SkinID string) *Error {
 	characterString := fmt.Sprintf("/Game/Athena/Items/Cosmetics/Characters/%s.%s", SkinID, SkinID)
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, c.Config.AccountID)
 	payload := map[string]interface{}{
 		"delete":   []string{},
 		"revision": c.Party.PartyRevision,

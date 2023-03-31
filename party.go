@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -138,6 +139,7 @@ type PartyMemberUpdated struct {
 	UpdatedAt             time.Time              `json:"updated_at"`
 }
 type PartyMemberLeft struct {
-	PartyID   string `json:"party_id"`
-	AccountID string `json:"account_id"`
+	PartyID    string `json:"party_id"`
+	AccountID  string `json:"account_id"`
+	RawMessage json.RawMessage
 }

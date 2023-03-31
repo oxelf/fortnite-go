@@ -1,6 +1,7 @@
 package main
 
 import (
+	b64 "encoding/base64"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -14,17 +15,19 @@ import (
 )
 
 type Client struct {
-	conn                *websocket.Conn
-	id                  string
-	Party               Party
-	c                   http.Client
-	JID                 string
-	pingCallback        func(*PartyPing)
-	joinCallback        func(*PartyJoin)
-	NewCaptainCallback  func(*PartyNewCaptain)
-	memberLeftCallback  func(*PartyMemberLeft)
-	friendshipRequestCallback   func(*FriendshipRequest)
-	skinChangedCallback func(string, string)
+	conn                      *websocket.Conn
+	id                        string
+	Party                     Party
+	c                         http.Client
+	JID                       string
+	Config                    ClientConfig
+	pingCallback              func(*PartyPing)
+	joinCallback              func(*PartyJoin)
+	NewCaptainCallback        func(*PartyNewCaptain)
+	memberLeftCallback        func(*PartyMemberLeft)
+	friendshipRequestCallback func(*FriendshipRequest)
+	blocklistUpdateCallback   func(*BlocklistUpdate)
+	skinChangedCallback       func(string, string)
 }
 type Party struct {
 	Id             string
@@ -34,11 +37,56 @@ type Party struct {
 	Members        []PartyUser
 }
 
-func NewClient(conn *websocket.Conn, auth string) (*Client, error) {
-	client := &Client{conn: conn}
+type ClientConfig struct {
+	//whetever the client should connect via xmpp or not. Cant be changed after initializing the client.
+	XMPP bool
+	//Possible values: "Fortnite", "Launcher". The Type of XMPP Connection you want to use. Launcher is just listening to presences.
+	Connection string
+	//Choose one of the pre defined types from fortnitego.Tokentypes . Take a look at that struct for more information on which types are possible. I recommend Fortnite-Pc for Fortnite XMPP Connection and Fortnite-IOS for Launcher Connection.
+	AuthClient string
+	//Your access token. We prefer eg1 token, because some servives might not accept other tokens than eg1
+	Token string
+	//We need your account Id to open a connection with XMPP.
+	AccountID string
+}
+
+var AuthClients = Authclients{
+	Fortnite_IOS_Client: "3446cd72694c4a4485d81b77adbb2141",
+	Fortnite_PC_Client:  "ec684b8c687f479fadea3cb2ad83f5c6",
+}
+
+func NewClient(config ClientConfig) (*Client, error) {
+	if config.AccountID == "" {
+		return nil, fmt.Errorf("please provide an AccountId")
+	}
+	if config.Token == "" {
+		return nil, fmt.Errorf("please provide a authentication token, best case an eg1")
+	}
+	if config.XMPP {
+		if config.Connection == "" {
+			return nil, fmt.Errorf("please provide the type of xmpp connection you want to use. Either Fortnite or Launcher")
+		}
+	}
+	if config.AuthClient == "" {
+		config.AuthClient = AuthClients.Fortnite_IOS_Client
+	}
+	client := &Client{Config: config}
 	client.c = http.Client{}
-	err := client.open(auth)
+	header := http.Header{}
+	header.Add("Sec-WebSocket-Protocol", "xmpp")
+
+	con, _, err := websocket.DefaultDialer.Dial("wss://xmpp-service-prod.ol.epicgames.com", header)
 	if err != nil {
+		res := fmt.Errorf("failed to connect to xmpp service: %v", err)
+		fmt.Println(res)
+	}
+	client.conn = con
+	auth := b64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("\u0000%s\u0000%s", config.AccountID,
+		config.Token,
+	)))
+
+	Openerr := client.open(auth)
+	if Openerr != nil {
 		return nil, err
 	}
 
@@ -115,7 +163,7 @@ func (client *Client) open(auth string) error {
 	uid := uuid.New()
 	id := strings.ReplaceAll(uid.String(), "-", "")
 	id = strings.ToUpper(id)
-	err = client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<iq id=\"_xmpp_bind1\" type=\"set\"><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"><resource>V2:Fortnite:WIN::%s</resource></bind></iq>", id)))
+	err = client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<iq id=\"_xmpp_bind1\" type=\"set\"><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"><resource>V2:%s:WIN::%s</resource></bind></iq>", client.Config.Connection, id)))
 	if err != nil {
 		return err
 	}
@@ -125,14 +173,23 @@ func (client *Client) open(auth string) error {
 	if err != nil {
 		return err
 	}
-	stamp := time.Now().UTC().Format("2006-01-02T15:04:05.999Z")
-	fmt.Print("Sended Presence with stamp: " + stamp)
-	err = client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<presence><status>{\"Status\":\"Battle Royale Lobby - 1/16\",\"bIsPlaying\":true,\"bIsJoinable\":true,\"bHasVoiceSupport\":false,\"ProductName\":\"Fortnite\",\"SessionId\":\"\",\"Properties\":{\"OverrideAppId_s\":\"Fortnite\",\"FortPartySize_i\":1,\"FortSubGame_i\":1,\"InUnjoinableMatch_b\":false}}</status><delay stamp=\"%s\" xmlns=\"urn:xmpp:delay\"/></presence>", stamp)))
-	if err != nil {
-		return err
+	PresenceError := client.SendPresence("Battle Royale Lobby - 1/16")
+	if PresenceError != nil {
+		fmt.Println("error sending presence")
 	}
 	fmt.Println("no error sending presence")
 	return nil
+}
+
+func (client *Client) SendPresence(Status string) error {
+	stamp := time.Now().UTC().Format("2006-01-02T15:04:05.999Z")
+	fmt.Print("Sended Presence with stamp: " + stamp)
+	err := client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<presence><status>{\"Status\":\"%s\",\"bIsPlaying\":true,\"bIsJoinable\":true,\"bHasVoiceSupport\":false,\"ProductName\":\"Fortnite\",\"SessionId\":\"\",\"Properties\":{\"OverrideAppId_s\":\"Fortnite\",\"FortPartySize_i\":1,\"FortSubGame_i\":1,\"InUnjoinableMatch_b\":false}}</status><delay stamp=\"%s\" xmlns=\"urn:xmpp:delay\"/></presence>", Status, stamp)))
+	if err != nil {
+		return err
+	} else {
+		return nil
+	}
 }
 
 func (client *Client) Read() (string, error) {
@@ -159,6 +216,9 @@ func (client *Client) expectResult(expect string) (string, error) {
 	}
 
 	if !strings.HasPrefix(result, expect) {
+		if result == "<failure xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"><not-authorized/><text xml:lang='en'>Password not verified</text></failure>" {
+			return "", fmt.Errorf("an error with the provided token or account id occured. check if they are correct, and if they are, try using an eg1 token")
+		}
 		return "", errors.New(fmt.Sprintf("expected %s, but got %s", expect, result))
 	}
 
@@ -232,6 +292,14 @@ func (c *Client) Listen() {
 					continue
 				}
 				switch body.Type {
+				case "USER_BLOCKLIST_UPDATE":
+					var blocklistUpdate BlocklistUpdate
+					err := json.Unmarshal(message.Body.RawJSON, &blocklistUpdate)
+					if err != nil {
+						fmt.Println("error unmarshaling")
+					}
+					blocklistUpdate.RawMessage = message.Body.RawJSON
+					c.blocklistUpdateCallback(&blocklistUpdate)
 				case "com.epicgames.social.party.notification.v0.PING":
 					var party_ping PartyPing
 					err := json.Unmarshal(message.Body.RawJSON, &party_ping)
@@ -308,8 +376,8 @@ func (c *Client) Listen() {
 						fmt.Println("unmarshalling error.")
 						continue
 					}
+					party_member_left.RawMessage = message.Body.RawJSON
 					c.memberLeftCallback(&party_member_left)
-				
 				case "FRIENDSHIP_REQUEST":
 					var friendshipRequest FriendshipRequest
 					err := json.Unmarshal(message.Body.RawJSON, &friendshipRequest)
@@ -317,6 +385,7 @@ func (c *Client) Listen() {
 						fmt.Println("unmarshalling error.")
 						continue
 					}
+					friendshipRequest.RawMessage = message.Body.RawJSON
 					c.friendshipRequestCallback(&friendshipRequest)
 				case "com.epicgames.friends.core.apiobjects.Friend":
 					fmt.Println("new message: ")
@@ -377,6 +446,9 @@ func (c *Client) OnMemberLeft(callback func(*PartyMemberLeft)) {
 
 func (c *Client) OnFriendRequest(callback func(*FriendshipRequest)) {
 	c.friendshipRequestCallback = callback
+}
+func (c *Client) OnBlocklistUpdate(callback func(*BlocklistUpdate)) {
+	c.blocklistUpdateCallback = callback
 }
 func (c *Client) OnSkinChanged(callback func(SkinID string, accountID string)) {
 	c.skinChangedCallback = callback

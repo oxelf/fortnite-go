@@ -83,8 +83,16 @@ type Body struct {
 }
 
 type FriendshipRequest struct {
-	From string `json:"from"`
-	To string	`json:"to"`
-	Timestamp time.Time `json:"timestamp"`
-	Status		string `json:"status"`
+	From       string    `json:"from"`
+	To         string    `json:"to"`
+	Timestamp  time.Time `json:"timestamp"`
+	Status     string    `json:"status"`
+	RawMessage json.RawMessage
+}
+
+type BlocklistUpdate struct {
+	OwnerID    string `json:"ownerId"`
+	AccountID  string `json:"accountId"`
+	Status     string `json:"status"`
+	RawMessage json.RawMessage
 }
