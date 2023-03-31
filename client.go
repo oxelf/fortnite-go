@@ -50,11 +50,6 @@ type ClientConfig struct {
 	AccountID string
 }
 
-var AuthClients = Authclients{
-	Fortnite_IOS_Client: "3446cd72694c4a4485d81b77adbb2141",
-	Fortnite_PC_Client:  "ec684b8c687f479fadea3cb2ad83f5c6",
-}
-
 func NewClient(config ClientConfig) (*Client, error) {
 	if config.AccountID == "" {
 		return nil, fmt.Errorf("please provide an AccountId")
