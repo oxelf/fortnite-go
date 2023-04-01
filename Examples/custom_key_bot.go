@@ -46,18 +46,18 @@ func main() {
 		AuthClient: AuthClients.Fortnite_PC_Client}
 	url := GetAuthCodeUrl(AuthClients.Fortnite_IOS_Client)
 	fmt.Println(url)
-	val, err := Get_OauthToken_By_AuthCode("d27b3a32a70749df8c97a9009bf79355", Base64AuthClients.Fortnite_IOS_Client, true)
-	if err != nil {
-		fmt.Println(err.Error())
+	val, eerr := Get_OauthToken_By_AuthCode("bf0dbfd3231c43809b8c1a02720f2449", Base64AuthClients.Fortnite_IOS_Client, true)
+	if eerr != nil {
+		fmt.Println(eerr.EpicErrorMessage)
 	} else {
 		fmt.Println("Acc token: " + val.AccessToken)
 		config.Token = val.AccessToken
 		config.AccountID = val.AccountID
 		Create_DeviceAuth(val.AccessToken, val.AccountID)
 	}
-	client, err := NewClient(config)
-	if err != nil {
-		fmt.Printf("failed to create new xmpp client: %v\n", err)
+	client, cerr := NewClient(config)
+	if cerr != nil {
+		fmt.Printf("failed to create new xmpp client: %v\n", cerr)
 	} else {
 		fmt.Println("Program started.")
 		client.Friends_Add_Or_Accept("463e92ed9ed047869788c331fac51e9d")
@@ -113,79 +113,8 @@ func main() {
 			client.PartyLeave()
 		})
 		client.Listen()
-		// for {
-
-		// 	if msg, err := client.Read(); err != nil {
-		// 		fmt.Printf("ERROR %v\n", err)
-		// 		break
-		// 	} else {
-
-		// 		if strings.HasPrefix(msg, "<presence") {
-
-		// 			presence := &Presence{}
-		// 			err := xml.Unmarshal([]byte(msg), presence)
-		// 			if err != nil {
-		// 				//TODO only log
-		// 				continue
-		// 			}
-
-		// 			status := &Status{}
-		// 			err = json.Unmarshal([]byte(presence.Status), status)
-		// 			if err != nil {
-		// 				//TODO only log
-		// 				continue
-		// 			}
-
-		// 			fmt.Printf("<Presence>: type:%s,\n from: %#v,\n status: %#v", presence.Type, presence.From, status)
-		// 		}
-		// 		if strings.HasPrefix(msg, "<message") {
-
-		// 			message := &Message{}
-		// 			err := xml.Unmarshal([]byte(msg), message)
-		// 			if err != nil {
-		// 				//TODO only log
-		// 				continue
-		// 			}
-		// 			body := &Body{}
-		// 			Uerr := json.Unmarshal(message.Body.RawJSON, &body)
-		// 			if Uerr != nil {
-		// 				fmt.Println("unmarshalling error.")
-		// 			}
-		// 			switch body.Type {
-		// 			case "com.epicgames.social.party.notification.v0.PING":
-		// 				fmt.Printf("Ping from: %s\n", body.PingerDN)
-		// 				res := client.PartyLookupPing(body.PingerID, client.Config.AccountID)
-		// 				fmt.Printf("Party id: %s\n", res.ID)
-		// 				fmt.Printf("jid: %s", message.To)
-		// 				resp := client.PartySendJoinRequest(message.To, res.ID)
-		// 				fmt.Println("resp:" + resp.ID)
-		// 			case "com.epicgames.social.party.notification.v0.MEMBER_JOINED":
-		// 				fmt.Println("joined: " + body.AccountDN)
-		// 			case "com.epicgames.social.party.notification.v0.MEMBER_NEW_CAPTAIN":
-		// 				fmt.Printf("new captain: %s, revision: %d\n", body.CaptainId, body.Revision)
-		// 				client.Party.Id = body.PartyId
-		// 				if body.Revision != 0 {
-		// 					client.Party.PartyRevision = body.Revision
-		// 				}
-		// 				setPlaylist := client.SetPlaylist()
-		// 				fmt.Println(setPlaylist)
-		// 				setKey := client.SetCustomKey("1234")
-		// 				fmt.Println(setKey)
-		// 				client.PartyLeave()
-		// 			case "com.epicgames.social.party.notification.v0.PARTY_UPDATED":
-		// 				fmt.Printf("Party updated from: %s, revision: %d", body.AccountDN, body.Revision)
-		// 				if body.Revision != 0 {
-		// 					client.Party.PartyRevision = body.Revision
-		// 				}
-		// 			default:
-		// 				continue
-		// 			}
-
-		// 		}
-		// 	}
 		for {
 			client.Listen()
 		}
-		// }
 	}
 }

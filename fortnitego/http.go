@@ -1,4 +1,4 @@
-package main
+package fortnitego
 
 import (
 	"bytes"
@@ -219,7 +219,7 @@ func (c *Client) LightSwitch_Status_Fortnite() (*LightSwitchResponse, *Error) {
 //###################################
 
 func (c *Client) Friends_Add_Or_Accept(friendId string) *Error {
-	url := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s", BaseRoute.FriendsPublicService, accountId, friendId)
+	url := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s", BaseRoute.FriendsPublicService, c.Config.AccountID, friendId)
 	payload := []byte{}
 	requestError := c.doNullableRequest("POST", url, payload, false)
 	if requestError != nil {
@@ -230,7 +230,7 @@ func (c *Client) Friends_Add_Or_Accept(friendId string) *Error {
 }
 
 func (c *Client) Friends_Remove_Or_Decline(friendId string) *Error {
-	url := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s", BaseRoute.FriendsPublicService, accountId, friendId)
+	url := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s", BaseRoute.FriendsPublicService, c.Config.AccountID, friendId)
 	payload := []byte{}
 	requestError := c.doNullableRequest("DELETE", url, payload, false)
 	if requestError != nil {
@@ -241,7 +241,7 @@ func (c *Client) Friends_Remove_Or_Decline(friendId string) *Error {
 }
 
 func (c *Client) Friends_Get_All() ([]Friend, *Error) {
-	url := fmt.Sprintf("%s/friends/api/public/friends/%s", BaseRoute.FriendsPublicService, accountId)
+	url := fmt.Sprintf("%s/friends/api/public/friends/%s", BaseRoute.FriendsPublicService, c.Config.AccountID)
 	payload := []byte{}
 	var friendList []Friend
 	err, _ := c.doRequest("GET", url, payload, false, &friendList)
@@ -253,7 +253,7 @@ func (c *Client) Friends_Get_All() ([]Friend, *Error) {
 }
 
 func (c *Client) Friends_Get_Blocklist() ([]Friend, *Error) {
-	url := fmt.Sprintf("%s/friends/api/v1/%s/blocklist", BaseRoute.FriendsPublicService, accountId)
+	url := fmt.Sprintf("%s/friends/api/v1/%s/blocklist", BaseRoute.FriendsPublicService, c.Config.AccountID)
 	payload := []byte{}
 	var blockList []Friend
 	err, _ := c.doRequest("GET", url, payload, false, &blockList)
@@ -266,7 +266,7 @@ func (c *Client) Friends_Get_Blocklist() ([]Friend, *Error) {
 
 // Currently not working!!! Problem is the body.
 func (c *Client) Friends_Set_Nickname(nickName string, friendID string) *Error {
-	uri := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s/alias", BaseRoute.FriendsPublicService, accountId, friendID)
+	uri := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s/alias", BaseRoute.FriendsPublicService, c.Config.AccountID, friendID)
 	encodedPayload := url.QueryEscape(nickName)
 	bodyBytes := []byte(encodedPayload)
 	body := url.Values{}
@@ -286,7 +286,7 @@ func (c *Client) Friends_Set_Nickname(nickName string, friendID string) *Error {
 //###################################
 
 func (c *Client) PartySendIntention(userId string) *Error {
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/members/%s/intentions/%s", BaseRoute.PartyPublicService, userId, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/members/%s/intentions/%s", BaseRoute.PartyPublicService, userId, c.Config.AccountID)
 	payload, err := json.Marshal(&IntentionPayload{Urn: ""})
 	if err != nil {
 		return &Error{
@@ -398,7 +398,7 @@ func (c *Client) PartySendInvite(userId string) PartyLookupResponse {
 }
 
 func (c *Client) PartySendJoinRequest(jid string, partyId string) PartyLookupResponse {
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/join", BaseRoute.PartyPublicService, partyId, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/join", BaseRoute.PartyPublicService, partyId, c.Config.AccountID)
 	payload := map[string]interface{}{
 		"connection": map[string]interface{}{
 			"id": jid,
@@ -411,7 +411,7 @@ func (c *Client) PartySendJoinRequest(jid string, partyId string) PartyLookupRes
 		},
 		"meta": map[string]interface{}{
 			"urn:epic:member:dn_s":               "oxibot 001",
-			"urn:epic:member:joinrequestusers_j": fmt.Sprintf("{\"users\":[{\"id\":\"%s\", \"dn\":\"oxelf ay\",\"plat\":\"WIN\",\"data\":{\"CrossplayPreference\": \"1\", \"SubGame_u\": \"1\"}}]}", accountId),
+			"urn:epic:member:joinrequestusers_j": fmt.Sprintf("{\"users\":[{\"id\":\"%s\", \"dn\":\"oxelf ay\",\"plat\":\"WIN\",\"data\":{\"CrossplayPreference\": \"1\", \"SubGame_u\": \"1\"}}]}", c.Config.AccountID),
 		},
 	}
 	payloadbytes, err := json.Marshal(payload)
@@ -471,7 +471,7 @@ func (c *Client) PartyUpdateMemberMeta(p *PartyMemberMeta) PartyLookupResponse {
 	} else {
 		characterString = fmt.Sprintf("/Game/Athena/Items/Cosmetics/Characters/%s.%s", p.CosmeticLoadout.Character, p.CosmeticLoadout.Character)
 	}
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, c.Config.AccountID)
 	payload := map[string]interface{}{
 		"delete":   []string{},
 		"revision": 0,
@@ -534,7 +534,7 @@ func (c *Client) PartySendInitialMemberData(p *PartyMemberMeta) PartyLookupRespo
 	} else {
 		characterString = fmt.Sprintf("/Game/Athena/Items/Cosmetics/Characters/%s.%s", p.CosmeticLoadout.Character, p.CosmeticLoadout.Character)
 	}
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, c.Config.AccountID)
 	payload := map[string]interface{}{
 		"delete":   []string{},
 		"revision": 0,
@@ -581,7 +581,7 @@ func (c *Client) PartySendInitialMemberData(p *PartyMemberMeta) PartyLookupRespo
 }
 
 func (c *Client) SetEmote(partyId string, eID string) PartyLookupResponse {
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, partyId, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, partyId, c.Config.AccountID)
 	payload := map[string]interface{}{
 		"delete":   []string{},
 		"revision": 2,
@@ -627,7 +627,7 @@ func (c *Client) SetEmote(partyId string, eID string) PartyLookupResponse {
 }
 
 func (c *Client) SetCustomKey(newKey string) PartyLookupResponse {
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s", BaseRoute.PartyPublicService, accountId)
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s", BaseRoute.PartyPublicService, c.Config.AccountID)
 	payload := map[string]interface{}{
 		"revision": c.Party.PartyRevision,
 		"meta": map[string]interface{}{

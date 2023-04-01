@@ -1,4 +1,4 @@
-package main
+package fortnitego
 
 import (
 	"encoding/json"
@@ -64,7 +64,7 @@ func GetAuthCodeUrl(authClient string) string {
 // code: the auth code you got from the url
 // base64Client: must be for the same client that u used for getting the auth code.
 // eg1: if true, you will get an eg1 token back. Some endpoints require this type of token. Its smart to use it.
-func Get_OauthToken_By_AuthCode(code string, base64Client string, eg1 bool) (*OauthToken, error) {
+func Get_OauthToken_By_AuthCode(code string, base64Client string, eg1 bool) (*OauthToken, *Error) {
 	uri := "https://account-public-service-prod.ol.epicgames.com/account/api/oauth/token"
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
@@ -79,7 +79,7 @@ func Get_OauthToken_By_AuthCode(code string, base64Client string, eg1 bool) (*Oa
 	if base64Client != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("basic %s", base64Client))
 	} else {
-		return nil, fmt.Errorf("please provide an authclient base64 string. You can use the pre defined ones like this: Base64AuthClients.Fortnite_IOS_Client")
+		return nil, &Error{ErrorMessage: "please provide an authclient base64 string. You can use the pre defined ones like this: Base64AuthClients.Fortnite_IOS_Client"}
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	client := &http.Client{}
@@ -94,15 +94,22 @@ func Get_OauthToken_By_AuthCode(code string, base64Client string, eg1 bool) (*Oa
 	if err != nil {
 		log.Fatalln(err)
 	}
+	if resp.StatusCode >= 400 {
+		newerr := &Error{}
+		err = json.Unmarshal(body, &newerr)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return nil, newerr
+	} else {
+		oauthToken := &OauthToken{}
+		err = json.Unmarshal(body, &oauthToken)
+		if err != nil {
+			log.Fatalln(err)
+		}
 
-	oauthToken := &OauthToken{}
-
-	err = json.Unmarshal(body, &oauthToken)
-	if err != nil {
-		log.Fatalln(err)
+		return oauthToken, nil
 	}
-
-	return oauthToken, nil
 }
 
 func Create_DeviceAuth(token string, accountId string) (*DeviceAuth, *Error) {
@@ -127,12 +134,19 @@ func Create_DeviceAuth(token string, accountId string) (*DeviceAuth, *Error) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	deviceAuth := &DeviceAuth{}
-
-	err = json.Unmarshal(body, &deviceAuth)
-	if err != nil {
-		log.Fatalln(err)
+	if resp.StatusCode >= 400 {
+		newerr := &Error{}
+		err = json.Unmarshal(body, &newerr)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return nil, newerr
+	} else {
+		deviceAuth := &DeviceAuth{}
+		err = json.Unmarshal(body, &deviceAuth)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return deviceAuth, nil
 	}
-	return deviceAuth, nil
 }

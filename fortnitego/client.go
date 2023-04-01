@@ -1,4 +1,4 @@
-package main
+package fortnitego
 
 import (
 	b64 "encoding/base64"
@@ -67,6 +67,9 @@ func NewClient(config ClientConfig) (*Client, error) {
 	}
 	client := &Client{Config: config}
 	client.c = http.Client{}
+	if !client.Config.XMPP {
+		return client, nil
+	}
 	header := http.Header{}
 	header.Add("Sec-WebSocket-Protocol", "xmpp")
 
@@ -80,8 +83,8 @@ func NewClient(config ClientConfig) (*Client, error) {
 		config.Token,
 	)))
 
-	Openerr := client.open(auth)
-	if Openerr != nil {
+	err = client.open(auth)
+	if err != nil {
 		return nil, err
 	}
 
@@ -268,7 +271,7 @@ func (c *Client) Listen() {
 					//TODO only log
 					continue
 				}
-				if strings.Contains(presence.From, accountId) {
+				if strings.Contains(presence.From, c.Config.AccountID) {
 					c.JID = presence.From
 				}
 				fmt.Printf("<Presence>: type:%s,\n from: %#v,\n status: %#v", presence.Type, presence.From, status)
@@ -316,7 +319,7 @@ func (c *Client) Listen() {
 						fmt.Println("unmarshalling error.")
 						continue
 					}
-					if party_join.AccountID == accountId {
+					if party_join.AccountID == c.Config.AccountID {
 						if party_join.PartyID != "" {
 							c.Party.Id = party_join.PartyID
 						}
@@ -341,7 +344,6 @@ func (c *Client) Listen() {
 							Revision:  party_join.Revision,
 						})
 					}
-					c.PartyUpdateMemberMeta(metaData)
 					c.joinCallback(&party_join)
 				case "com.epicgames.social.party.notification.v0.MEMBER_NEW_CAPTAIN":
 					var party_new_captain PartyNewCaptain
