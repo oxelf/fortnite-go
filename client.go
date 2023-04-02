@@ -28,6 +28,7 @@ type Client struct {
 	friendshipRequestCallback func(*FriendshipRequest)
 	blocklistUpdateCallback   func(*BlocklistUpdate)
 	skinChangedCallback       func(string, string)
+	presenceCallback          func(*Status)
 }
 type Party struct {
 	Id             string
@@ -171,7 +172,7 @@ func (client *Client) open(auth string) error {
 	if err != nil {
 		return err
 	}
-	PresenceError := client.SendPresence("Battle Royale Lobby - 1/16")
+	PresenceError := client.SendPresence("moin Milo")
 	if PresenceError != nil {
 		fmt.Println("error sending presence")
 	}
@@ -257,9 +258,10 @@ func (c *Client) Listen() {
 		} else {
 
 			if strings.HasPrefix(msg, "<presence") {
-
+				fmt.Printf("new presence: %s", msg)
 				presence := &Presence{}
 				err := xml.Unmarshal([]byte(msg), presence)
+
 				if err != nil {
 					//TODO only log
 					continue
@@ -275,6 +277,10 @@ func (c *Client) Listen() {
 					c.JID = presence.From
 				}
 				fmt.Printf("<Presence>: type:%s,\n from: %#v,\n status: %#v", presence.Type, presence.From, status)
+				if c != nil {
+					c.presenceCallback(status)
+					continue
+				}
 			}
 			if strings.HasPrefix(msg, "<message") {
 				message := &Message{}
@@ -446,6 +452,9 @@ func (c *Client) OnFriendRequest(callback func(*FriendshipRequest)) {
 }
 func (c *Client) OnBlocklistUpdate(callback func(*BlocklistUpdate)) {
 	c.blocklistUpdateCallback = callback
+}
+func (c *Client) OnPresence(callback func(*Status)) {
+	c.presenceCallback = callback
 }
 func (c *Client) OnSkinChanged(callback func(SkinID string, accountID string)) {
 	c.skinChangedCallback = callback

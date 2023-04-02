@@ -75,11 +75,37 @@ type User struct {
 	SubGame_u      string `json:" SubGame_u"`
 }
 
+type FileLocationInfo struct {
+	Files map[string]struct {
+		ReadLink     string `json:"readLink"`
+		WriteLink    string `json:"writeLink"`
+		Hash         string `json:"hash"`
+		LastModified string `json:"lastModified"`
+		Size         int    `json:"size"`
+		FileLocked   bool   `json:"fileLocked"`
+	} `json:"files"`
+}
+
 type Meta struct {
 	DisplayName          string           `json:"urn:epic:member:dn_s"`
 	JoinRequestUsersJSON JoinRequestUsers `json:"urn:epic:member:joinrequestusers_j"`
 }
+type FileInfo struct {
+	ReadLink     string `json:"readLink"`
+	WriteLink    string `json:"writeLink"`
+	Hash         string `json:"hash"`
+	LastModified string `json:"lastModified"`
+	Size         int64  `json:"size"`
+	FileLocked   bool   `json:"fileLocked"`
+}
 
+type FileData struct {
+	Files map[string]FileInfo `json:"files"`
+}
+
+type S3Data struct {
+	Data FileData `json:"data"`
+}
 type Connection struct {
 	ID              string         `json:"id"`
 	Meta            ConnectionMeta `json:"meta"`
@@ -166,7 +192,6 @@ func (c *Client) doRequest(method string, url string, payload []byte, urlEncoded
 	res, err := c.c.Do(req)
 	if res.StatusCode == 204 || res.StatusCode == 200 {
 		body, err := io.ReadAll(res.Body)
-		fmt.Println(body)
 		if err != nil {
 			return &Error{ErrorMessage: "IO Read Error."}, nil
 		}
@@ -195,6 +220,53 @@ func (c *Client) doRequest(method string, url string, payload []byte, urlEncoded
 			return EpicError, nil
 		}
 		return EpicError, nil
+	}
+}
+
+//###################################
+//#       	   Files     	        #
+//###################################
+
+func (c *Client) FileLocationInfo(url string) (*FileLocationInfo, *Error) {
+	payload := []byte{}
+	var fileLocationInfo FileLocationInfo
+	err, _ := c.doRequest("GET", url, payload, false, &fileLocationInfo)
+	if err != nil {
+		return nil, err
+	} else {
+		return &fileLocationInfo, nil
+	}
+}
+
+// ###################################
+// #       	   Replays     	        #
+// ###################################
+// https://datastorage-public-service-live.ol.epicgames.com/api/v1/access/fnreplaysmetadata/public
+func DownloadReplayCDNFile(url string) (*Replay, *Error) {
+	c := http.Client{}
+	payload := []byte{}
+	req, nerr := http.NewRequest("GET", url, bytes.NewBuffer(payload))
+	if nerr != nil {
+		fmt.Println("error creating request.")
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, &Error{
+			ErrorMessage: nerr.Error(),
+		}
+	} else {
+		body, err := io.ReadAll(resp.Body)
+		bodyString := string(body)
+		fmt.Println("resp: " + bodyString)
+		if err != nil {
+			return nil, &Error{ErrorMessage: "IO Read Error."}
+		}
+		var replay Replay
+		rerr := json.Unmarshal(body, &replay)
+		if rerr != nil {
+			fmt.Println(rerr)
+		}
+		return &replay, nil
 	}
 }
 
