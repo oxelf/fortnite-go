@@ -2,36 +2,38 @@ package main
 
 import (
 	"fmt"
+
+	fortnitego "github.com/oxelf/fortnite-go"
 )
 
 var accountId = "49748cfe40334a129ca3620252abfba2"
 
-var metaData = &PartyMemberMeta{
+var metaData = &fortnitego.PartyMemberMeta{
 	Location:         "PreLobby",
 	PlayersLeft:      "0",
 	MatchStartedTime: "0001-01-01T00:00:00.000Z",
 	Emote:            "EID_Worm",
-	LobbyState: LobbyState{
+	LobbyState: fortnitego.LobbyState{
 		Readiness: true,
 		InputType: "MouseAndKeyboard",
 	},
-	FrontEndMapMarker: FrontEndMapMarker{
+	FrontEndMapMarker: fortnitego.FrontEndMapMarker{
 		IsSet: false,
 		X:     0,
 		Y:     0,
 	},
-	CosmeticLoadout: CosmeticLoadout{
+	CosmeticLoadout: fortnitego.CosmeticLoadout{
 		Character: "CID_029_Athena_Commando_F_Halloween",
 		BackPack:  "None",
 		Contrails: "None",
 		PickAxe:   "DefaultPickaxe",
 	},
-	Banner: Banner{
+	Banner: fortnitego.Banner{
 		BannerID:      "standardbanner15",
 		BannerColorId: "defaultcolor15",
 		SeasonLevel:   1,
 	},
-	BattlePassInfo: BattlePassInfo{
+	BattlePassInfo: fortnitego.BattlePassInfo{
 		Level:         12,
 		Purchased:     true,
 		SelfBoostXP:   0,
@@ -40,35 +42,37 @@ var metaData = &PartyMemberMeta{
 }
 
 func main() {
-	config := ClientConfig{
+	config := fortnitego.ClientConfig{
 		XMPP:       true,
 		Connection: "Fortnite",
-		AuthClient: AuthClients.Fortnite_PC_Client}
-	url := GetAuthCodeUrl(AuthClients.Fortnite_IOS_Client)
+		AuthClient: fortnitego.AuthClients.Fortnite_PC_Client}
+	url := fortnitego.GetAuthCodeUrl(fortnitego.AuthClients.Fortnite_IOS_Client)
 	fmt.Println(url)
-	val, eerr := Get_OauthToken_By_AuthCode("bf0dbfd3231c43809b8c1a02720f2449", Base64AuthClients.Fortnite_IOS_Client, true)
+	val, eerr := fortnitego.Get_OauthToken_By_AuthCode("0e65ec7002c5488592c5a98f4c7dbcea", fortnitego.Base64AuthClients.Fortnite_IOS_Client, true)
 	if eerr != nil {
 		fmt.Println(eerr.EpicErrorMessage)
 	} else {
 		fmt.Println("Acc token: " + val.AccessToken)
 		config.Token = val.AccessToken
 		config.AccountID = val.AccountID
-		Create_DeviceAuth(val.AccessToken, val.AccountID)
+		fortnitego.Create_DeviceAuth(val.AccessToken, val.AccountID)
 	}
-	client, cerr := NewClient(config)
+	client, cerr := fortnitego.NewClient(config)
 	if cerr != nil {
 		fmt.Printf("failed to create new xmpp client: %v\n", cerr)
 	} else {
 		fmt.Println("Program started.")
-		client.Friends_Add_Or_Accept("463e92ed9ed047869788c331fac51e9d")
 		res, ResErr := client.LightSwitch_Status_Fortnite()
 		if ResErr != nil {
 			fmt.Println(ResErr)
 		} else {
 			fmt.Println(res)
 		}
+		client.OnFriendRequest(func(fr *fortnitego.FriendshipRequest) {
+			client.Friends_Add_Or_Accept(fr.From)
+		})
 		client.OnPing(
-			func(p *PartyPing) {
+			func(p *fortnitego.PartyPing) {
 				fmt.Println("New Ping from: " + p.PingerDN)
 				res := client.PartyLookupPing(p.PingerID, client.Config.AccountID)
 				fmt.Printf("Party id: %s\n", res.ID)
@@ -77,7 +81,7 @@ func main() {
 				fmt.Println("resp:" + resp.ID)
 			},
 		)
-		client.OnJoin(func(j *PartyJoin) {
+		client.OnJoin(func(j *fortnitego.PartyJoin) {
 			fmt.Println("New Join: " + j.AccountDN)
 			partyLookup, err := client.PartyLookup(client.Party.Id)
 			if err != nil {
@@ -89,7 +93,7 @@ func main() {
 			fmt.Println(keyRes)
 		})
 		client.OnMemberLeft(
-			func(m *PartyMemberLeft) {
+			func(m *fortnitego.PartyMemberLeft) {
 				fmt.Println("Member left: " + m.AccountID)
 			},
 		)
@@ -104,7 +108,7 @@ func main() {
 				fmt.Println("client new skin:" + s)
 			}
 		})
-		client.OnNewCaptain(func(c *PartyNewCaptain) {
+		client.OnNewCaptain(func(c *fortnitego.PartyNewCaptain) {
 			fmt.Println("new captain: " + c.AccountDN)
 			setPlaylist := client.SetPlaylist()
 			fmt.Println(setPlaylist)

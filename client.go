@@ -171,7 +171,7 @@ func (client *Client) open(auth string) error {
 	if err != nil {
 		return err
 	}
-	PresenceError := client.SendPresence("Battle Royale Lobby - 1/16")
+	PresenceError := client.SendPresence("moin Milo")
 	if PresenceError != nil {
 		fmt.Println("error sending presence")
 	}
@@ -257,7 +257,7 @@ func (c *Client) Listen() {
 		} else {
 
 			if strings.HasPrefix(msg, "<presence") {
-
+				fmt.Printf("new presence: %s", msg)
 				presence := &Presence{}
 				err := xml.Unmarshal([]byte(msg), presence)
 				if err != nil {
