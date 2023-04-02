@@ -48,7 +48,7 @@ func main() {
 		AuthClient: fortnitego.AuthClients.Fortnite_PC_Client}
 	url := fortnitego.GetAuthCodeUrl(fortnitego.AuthClients.Fortnite_IOS_Client)
 	fmt.Println(url)
-	val, eerr := fortnitego.Get_OauthToken_By_AuthCode("0e65ec7002c5488592c5a98f4c7dbcea", fortnitego.Base64AuthClients.Fortnite_IOS_Client, true)
+	val, eerr := fortnitego.Get_OauthToken_By_AuthCode("3cb997fb0a5844bb90ba49492abbc298", fortnitego.Base64AuthClients.Fortnite_IOS_Client, true)
 	if eerr != nil {
 		fmt.Println(eerr.EpicErrorMessage)
 	} else {
@@ -62,6 +62,19 @@ func main() {
 		fmt.Printf("failed to create new xmpp client: %v\n", cerr)
 	} else {
 		fmt.Println("Program started.")
+		client.OnPresence(func(p *fortnitego.Status) {
+			if p.SessionID != "" {
+				fileLocation, _ := client.FileLocationInfo(fmt.Sprint("https://datastorage-public-service-live.ol.epicgames.com/api/v1/access/fnreplaysmetadata/public%2F" + p.SessionID + ".json"))
+				fileUrl := ""
+				for _, value := range fileLocation.Files {
+					fileUrl = value.ReadLink // return the first key-value pair
+					break                    // exit the loop after the first iteration
+				}
+				fortnitego.DownloadReplayCDNFile(fileUrl)
+			}
+
+		})
+
 		res, ResErr := client.LightSwitch_Status_Fortnite()
 		if ResErr != nil {
 			fmt.Println(ResErr)

@@ -29,6 +29,12 @@ type Presence struct {
 		Xmlns string `xml:"xmlns,attr"`
 		Stamp string `xml:"stamp,attr"`
 	} `xml:"delay"`
+	UnjoinableMatch bool `xml:"InUnjoibableMatch_b"`
+	GamePlayStats   struct {
+		State    string
+		Playlist string `xml:"playlist"`
+		Kills    int    `xml:"numKills"`
+	} `xml:"FortGamePlayStats_j"`
 }
 
 type Iq struct {
@@ -52,6 +58,12 @@ type Status struct {
 	BHasVoiceSupport bool   `json:"bHasVoiceSupport"`
 	SessionID        string `json:"SessionId"`
 	ProductName      string `json:"ProductName"`
+	UnjoinableMatch  bool   `json:"InUnjoibableMatch_b"`
+	GamePlayStats    struct {
+		State    string `json:"state"`
+		Playlist string `json:"playlist"`
+		Kills    int    `json:"numKills"`
+	} `json:"FortGamePlayStats_j"`
 }
 type Message struct {
 	XMLName xml.Name `xml:"message"`
