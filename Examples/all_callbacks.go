@@ -6,7 +6,7 @@ import (
 	fortnitego "github.com/oxelf/fortnite-go"
 )
 
-func main() {
+func cmain() {
 	//The config for our client.
 	config := fortnitego.ClientConfig{
 		XMPP:       true,
