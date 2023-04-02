@@ -1,4 +1,4 @@
-module fortnite-go
+module github.com/oxelf/fortnite-go
 
 go 1.20
 

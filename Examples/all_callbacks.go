@@ -27,35 +27,30 @@ func main() {
 	}
 	fmt.Println("Program started.")
 	//Handling callbacks.
-	client.OnPing(
-		func(p *fortnitego.PartyPing) {
-			fmt.Println("New Ping from: " + p.PingerDN)
-			//Looking up the ping for the partyid and our JID.
-			res := client.PartyLookupPing(p.PingerID, client.Config.AccountID)
-			//Sending a Join Request. If we received an ping before, we need to send a join request to join.
-			client.PartySendJoinRequest(p.Message.To, res.ID)
-		},
-	)
+	client.OnPing(func(p *fortnitego.PartyPing) {
+		fmt.Println("New Ping from: " + p.PingerDN)
+	})
 	client.OnJoin(func(j *fortnitego.PartyJoin) {
 		fmt.Println("New Join: " + j.AccountDN)
-		if j.AccountID == client.Config.AccountID {
-			//We set the skin, because if we dont set it, our client wont be shown as player in the party.
-			client.Set_Skin("CID_029_Athena_Commando_F_Halloween")
-			//Just to do something, we make the bot ready up.
-			client.SetReadiness(j.PartyID, true)
+	})
+	client.OnMemberLeft(func(m *fortnitego.PartyMemberLeft) {
+		fmt.Println("Member left: " + m.AccountID)
+	})
+	client.OnSkinChanged(func(skin string, userid string) {
+		if userid != client.Config.AccountID {
+			fmt.Printf("User: %s, new Skin: %s", userid, skin)
+		} else {
+			fmt.Println("client new skin:" + skin)
 		}
-
 	})
 	client.OnNewCaptain(func(c *fortnitego.PartyNewCaptain) {
 		fmt.Println("new captain: " + c.AccountDN)
-		//check if our bot is the new captain
-		if c.AccountID == client.Config.AccountID {
-			setPlaylist := client.SetPlaylist()
-			fmt.Println(setPlaylist)
-			setKey := client.SetCustomKey("1234")
-			fmt.Println(setKey)
-			client.PartyLeave()
-		}
+	})
+	client.OnBlocklistUpdate(func(bu *fortnitego.BlocklistUpdate) {
+		fmt.Printf("Blocklist updated. User: %s, New Status: %s\n", bu.AccountID, bu.Status)
+	})
+	client.OnFriendRequest(func(fr *fortnitego.FriendshipRequest) {
+		fmt.Printf("Friendrequest message from: %s, Status: %s\n", fr.From, fr.Status)
 	})
 	//call ```client.Listen()```to start listening to messages and receiving callbacks. This is a blocking operation, call it at the end of your func.
 	client.Listen()

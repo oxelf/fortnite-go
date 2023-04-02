@@ -46,6 +46,21 @@ func main() {
 		}
 
 	})
+	client.OnMemberLeft(
+		func(m *fortnitego.PartyMemberLeft) {
+			fmt.Println("Member left: " + m.AccountID)
+		},
+	)
+	client.OnSkinChanged(func(skin string, id string) {
+		//Just to demonstrate, if someone changes skin, and the accountid is not the id of our bot, We change our skin to the same skin as the other person.
+		if id != client.Config.AccountID {
+			fmt.Println("new Skin: " + skin)
+			//Set the skin that the other user has set.
+			client.Set_Skin(skin)
+		} else {
+			fmt.Println("client new skin:" + skin)
+		}
+	})
 	client.OnNewCaptain(func(c *fortnitego.PartyNewCaptain) {
 		fmt.Println("new captain: " + c.AccountDN)
 		//check if our bot is the new captain
