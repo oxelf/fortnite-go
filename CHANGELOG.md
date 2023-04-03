@@ -19,3 +19,13 @@
 
 <hr>
 
+## 0.2.0
+
+
+### Initial Version
+
+* XMPP
+
+  * All Callbacks are now supported. Some Callbacks might not be unmarshaled into a struct, because i couldnt test for the payload. 
+
+<hr>
