@@ -46,5 +46,5 @@ Inspired by fortnitepy and fnbr.js
 
 
 <h2>Links<h2>
-- [Discord](https://discord.gg/sDt6Zk7bbg)
-- [Docs](https://pkg.go.dev/github.com/oxelf/fortnite-go)
+- [Discord] (https://discord.gg/sDt6Zk7bbg)
+- [Docs] (https://pkg.go.dev/github.com/oxelf/fortnite-go)
