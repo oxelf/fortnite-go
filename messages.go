@@ -35,6 +35,7 @@ type Presence struct {
 		Playlist string `xml:"playlist"`
 		Kills    int    `xml:"numKills"`
 	} `xml:"FortGamePlayStats_j"`
+	MStatus Status
 }
 
 type Iq struct {

@@ -27,8 +27,12 @@ type Client struct {
 	memberLeftCallback        func(*PartyMemberLeft)
 	friendshipRequestCallback func(*FriendshipRequest)
 	blocklistUpdateCallback   func(*BlocklistUpdate)
+	kickedCallback            func(*PartyMemberKicked)
+	expiredCallback           func(*PartyMemberExpired)
+	disconnectedCallback      func(*PartyMemberDisconnected)
+	needConfirmationCallback  func(*PartyMemberRequireConfirmation)
 	skinChangedCallback       func(string, string)
-	presenceCallback          func(*Status)
+	presenceCallback          func(*Presence)
 }
 type Party struct {
 	Id             string
@@ -172,17 +176,16 @@ func (client *Client) open(auth string) error {
 	if err != nil {
 		return err
 	}
-	PresenceError := client.SendPresence("moin Milo")
+	PresenceError := client.SendPresence("Battle Royale Lobby - 1/16")
 	if PresenceError != nil {
-		fmt.Println("error sending presence")
+		return err
 	}
-	fmt.Println("no error sending presence")
+
 	return nil
 }
 
 func (client *Client) SendPresence(Status string) error {
 	stamp := time.Now().UTC().Format("2006-01-02T15:04:05.999Z")
-	fmt.Print("Sended Presence with stamp: " + stamp)
 	err := client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<presence><status>{\"Status\":\"%s\",\"bIsPlaying\":true,\"bIsJoinable\":true,\"bHasVoiceSupport\":false,\"ProductName\":\"Fortnite\",\"SessionId\":\"\",\"Properties\":{\"OverrideAppId_s\":\"Fortnite\",\"FortPartySize_i\":1,\"FortSubGame_i\":1,\"InUnjoinableMatch_b\":false}}</status><delay stamp=\"%s\" xmlns=\"urn:xmpp:delay\"/></presence>", Status, stamp)))
 	if err != nil {
 		return err
@@ -258,7 +261,6 @@ func (c *Client) Listen() {
 		} else {
 
 			if strings.HasPrefix(msg, "<presence") {
-				fmt.Printf("new presence: %s", msg)
 				presence := &Presence{}
 				err := xml.Unmarshal([]byte(msg), presence)
 
@@ -278,7 +280,8 @@ func (c *Client) Listen() {
 				}
 				fmt.Printf("<Presence>: type:%s,\n from: %#v,\n status: %#v", presence.Type, presence.From, status)
 				if c != nil {
-					c.presenceCallback(status)
+					presence.MStatus = *status
+					c.presenceCallback(presence)
 					continue
 				}
 			}
@@ -292,7 +295,6 @@ func (c *Client) Listen() {
 				body := &Body{}
 				Uerr := json.Unmarshal(message.Body.RawJSON, &body)
 				if Uerr != nil {
-					fmt.Println("unmarshalling error.")
 					continue
 				}
 				switch body.Type {
@@ -300,7 +302,7 @@ func (c *Client) Listen() {
 					var blocklistUpdate BlocklistUpdate
 					err := json.Unmarshal(message.Body.RawJSON, &blocklistUpdate)
 					if err != nil {
-						fmt.Println("error unmarshaling")
+						continue
 					}
 					blocklistUpdate.RawMessage = message.Body.RawJSON
 					c.blocklistUpdateCallback(&blocklistUpdate)
@@ -308,7 +310,6 @@ func (c *Client) Listen() {
 					var party_ping PartyPing
 					err := json.Unmarshal(message.Body.RawJSON, &party_ping)
 					if err != nil {
-						fmt.Println("unmarshalling error.")
 						continue
 					}
 					party_ping.Message = *message
@@ -372,6 +373,21 @@ func (c *Client) Listen() {
 						c.Party.PartyRevision = body.Revision
 					}
 					continue
+				case "com.epicgames.social.party.notification.v0.MEMBER_KICKED":
+					var partyMemberKicked PartyMemberKicked
+					partyMemberKicked.RawMessage = message.Body.RawJSON
+					c.kickedCallback(&partyMemberKicked)
+				case "com.epicgames.social.party.notification.v0.MEMBER_EXPIRED":
+					var partyMemberExpired PartyMemberExpired
+					partyMemberExpired.RawMessage = message.Body.RawJSON
+					c.expiredCallback(&partyMemberExpired)
+				case "com.epicgames.social.party.notification.v0.MEMBER_DISCONNECTED":
+					var partyMemberDisconnected PartyMemberDisconnected
+					partyMemberDisconnected.RawMessage = message.Body.RawJSON
+					c.disconnectedCallback(&partyMemberDisconnected)
+				case "com.epicgames.social.party.notification.v0.MEMBER_REQUIRE_CONFIRMATION":
+					var partyMemberRequireConfirmation PartyMemberRequireConfirmation
+					c.needConfirmationCallback(&partyMemberRequireConfirmation)
 				case "com.epicgames.social.party.notification.v0.MEMBER_LEFT":
 					var party_member_left PartyMemberLeft
 					err := json.Unmarshal(message.Body.RawJSON, &party_member_left)
@@ -390,9 +406,6 @@ func (c *Client) Listen() {
 					}
 					friendshipRequest.RawMessage = message.Body.RawJSON
 					c.friendshipRequestCallback(&friendshipRequest)
-				case "com.epicgames.friends.core.apiobjects.Friend":
-					fmt.Println("new message: ")
-					fmt.Println(msg)
 				case "com.epicgames.social.party.notification.v0.MEMBER_STATE_UPDATED":
 					var party_member_updated PartyMemberUpdated
 					err := json.Unmarshal(message.Body.RawJSON, &party_member_updated)
@@ -453,8 +466,20 @@ func (c *Client) OnFriendRequest(callback func(*FriendshipRequest)) {
 func (c *Client) OnBlocklistUpdate(callback func(*BlocklistUpdate)) {
 	c.blocklistUpdateCallback = callback
 }
-func (c *Client) OnPresence(callback func(*Status)) {
+func (c *Client) OnPresence(callback func(*Presence)) {
 	c.presenceCallback = callback
+}
+func (c *Client) OnMemberKicked(callback func(*PartyMemberKicked)) {
+	c.kickedCallback = callback
+}
+func (c *Client) OnMemberExpired(callback func(*PartyMemberExpired)) {
+	c.expiredCallback = callback
+}
+func (c *Client) OnMemberDisconnected(callback func(*PartyMemberDisconnected)) {
+	c.disconnectedCallback = callback
+}
+func (c *Client) OnMemberRequireConfirmation(callback func(*PartyMemberRequireConfirmation)) {
+	c.needConfirmationCallback = callback
 }
 func (c *Client) OnSkinChanged(callback func(SkinID string, accountID string)) {
 	c.skinChangedCallback = callback

@@ -247,7 +247,7 @@ func DownloadReplayCDNFile(url string) (*Replay, *Error) {
 	payload := []byte{}
 	req, nerr := http.NewRequest("GET", url, bytes.NewBuffer(payload))
 	if nerr != nil {
-		fmt.Println("error creating request.")
+
 	}
 	resp, err := c.Do(req)
 	if err != nil {
@@ -256,15 +256,13 @@ func DownloadReplayCDNFile(url string) (*Replay, *Error) {
 		}
 	} else {
 		body, err := io.ReadAll(resp.Body)
-		bodyString := string(body)
-		fmt.Println("resp: " + bodyString)
 		if err != nil {
 			return nil, &Error{ErrorMessage: "IO Read Error."}
 		}
 		var replay Replay
 		rerr := json.Unmarshal(body, &replay)
 		if rerr != nil {
-			fmt.Println(rerr)
+
 		}
 		return &replay, nil
 	}
@@ -397,29 +395,28 @@ func (c *Client) PartyLookupPing(userId string, clientId string) *PartyLookupRes
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/user/%s/pings/%s/parties", BaseRoute.PartyPublicService, clientId, userId)
 	payload, err := json.Marshal(&IntentionPayload{Urn: ""})
 	if err != nil {
-		fmt.Println("error marschaling")
+
 	}
 	req, err := http.NewRequest("GET", url, bytes.NewBuffer(payload))
 	if err != nil {
-		fmt.Println("error")
+
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
 	if requestError != nil {
-		fmt.Println("request error.")
+
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("io read error.")
+
 	}
 
 	var partyLookupResponses []PartyLookupResponse
 	err = json.Unmarshal([]byte(body), &partyLookupResponses)
 	if err != nil {
-		fmt.Println(err)
 
 	}
 	if len(partyLookupResponses) == 0 {
@@ -440,30 +437,30 @@ func (c *Client) PartySendInvite(userId string) PartyLookupResponse {
 	}
 	payloadbytes, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("error marschaling")
+
 	}
 	req, err := http.NewRequest("GET", url, bytes.NewBuffer(payloadbytes))
 	if err != nil {
-		fmt.Println("error")
+
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
 	if requestError != nil {
-		fmt.Println("request error.")
+
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("io read error.")
+
 	}
 
 	response := &PartyLookupResponse{}
 
 	err = json.Unmarshal(body, response)
 	if err != nil {
-		fmt.Println("error unmarshaling.")
+
 	}
 
 	return *response
@@ -488,32 +485,31 @@ func (c *Client) PartySendJoinRequest(jid string, partyId string) PartyLookupRes
 	}
 	payloadbytes, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("error marschaling")
+
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadbytes))
 	if err != nil {
-		fmt.Println("error")
+
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
 	if requestError != nil {
-		fmt.Println("req error: " + requestError.Error())
-		fmt.Println("request error.")
+
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("io read error.")
+
 	}
 
 	response := &PartyLookupResponse{}
 
 	err = json.Unmarshal(body, response)
 	if err != nil {
-		fmt.Println("error unmarshaling.")
+
 	}
 
 	return *response
@@ -556,34 +552,29 @@ func (c *Client) PartyUpdateMemberMeta(p *PartyMemberMeta) PartyLookupResponse {
 
 	payloadbytes, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("error marschaling")
+
 	}
 
 	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
 
 	if err != nil {
-		fmt.Println("error")
+
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
-	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
 	if requestError != nil {
-		fmt.Println("req error: " + requestError.Error())
-		fmt.Println("request error.")
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("io read error.")
 	}
 
 	response := &PartyLookupResponse{}
 
 	err = json.Unmarshal(body, response)
 	if err != nil {
-		fmt.Println("error unmarshaling.")
 	}
 
 	return *response
@@ -619,34 +610,27 @@ func (c *Client) PartySendInitialMemberData(p *PartyMemberMeta) PartyLookupRespo
 
 	payloadbytes, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("error marschaling")
 	}
 
 	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
 
 	if err != nil {
-		fmt.Println("error")
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
-	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
 	if requestError != nil {
-		fmt.Println("req error: " + requestError.Error())
-		fmt.Println("request error.")
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("io read error.")
 	}
 
 	response := &PartyLookupResponse{}
 
 	err = json.Unmarshal(body, response)
 	if err != nil {
-		fmt.Println("error unmarshaling.")
 	}
 
 	return *response
@@ -665,34 +649,27 @@ func (c *Client) SetEmote(partyId string, eID string) PartyLookupResponse {
 
 	payloadbytes, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("error marschaling")
 	}
 
 	request, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
 
 	if err != nil {
-		fmt.Println("error")
 	}
 
 	request.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	request.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(request)
-	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
 	if requestError != nil {
-		fmt.Println("req error: " + requestError.Error())
-		fmt.Println("request error.")
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("io read error.")
 	}
 
 	response := &PartyLookupResponse{}
 
 	err = json.Unmarshal(body, response)
 	if err != nil {
-		fmt.Println("error unmarshaling.")
 	}
 
 	return *response
@@ -711,27 +688,21 @@ func (c *Client) SetCustomKey(newKey string) PartyLookupResponse {
 
 	payloadbytes, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("error marschaling")
 	}
 
 	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
 
 	if err != nil {
-		fmt.Println("error")
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
-	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
 	if requestError != nil {
-		fmt.Println("req error: " + requestError.Error())
-		fmt.Println("request error.")
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("io read error.")
 	}
 	var epicError Error
 	err = json.Unmarshal([]byte(body), &epicError)
@@ -751,7 +722,6 @@ func (c *Client) SetCustomKey(newKey string) PartyLookupResponse {
 
 	err = json.Unmarshal(body, response)
 	if err != nil {
-		fmt.Println("error unmarshaling.")
 	}
 
 	return *response
@@ -760,10 +730,8 @@ func (c *Client) SetReadiness(partyId string, ready bool) PartyLookupResponse {
 	var readyString = ""
 	if ready {
 		readyString = "Ready"
-		fmt.Println(" readiness: ready")
 	} else {
 		readyString = "NotReady"
-		fmt.Println(" readiness: not ready")
 	}
 
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, partyId, c.Config.AccountID)
@@ -778,34 +746,28 @@ func (c *Client) SetReadiness(partyId string, ready bool) PartyLookupResponse {
 
 	payloadbytes, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("error marschaling")
 	}
 
 	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
 
 	if err != nil {
-		fmt.Println("error")
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
-	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
+
 	if requestError != nil {
-		fmt.Println("req error: " + requestError.Error())
-		fmt.Println("request error.")
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("io read error.")
 	}
 
 	response := &PartyLookupResponse{}
 
 	err = json.Unmarshal(body, response)
 	if err != nil {
-		fmt.Println("error unmarshaling.")
 	}
 
 	return *response
@@ -825,28 +787,26 @@ func (c *Client) SetPlaylist() PartyLookupResponse {
 
 	payloadbytes, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("error marschaling")
+
 	}
 
 	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
 
 	if err != nil {
-		fmt.Println("error")
+
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
-	fmt.Printf("Update meta status code: %d\n", resp.StatusCode)
-	fmt.Printf("update meta reason: %v", resp)
+
 	if requestError != nil {
-		fmt.Println("req error: " + requestError.Error())
-		fmt.Println("request error.")
+
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("io read error.")
+
 	}
 	var epicError Error
 	err = json.Unmarshal([]byte(body), &epicError)
@@ -866,7 +826,7 @@ func (c *Client) SetPlaylist() PartyLookupResponse {
 
 		err = json.Unmarshal(body, response)
 		if err != nil {
-			fmt.Println("error unmarshaling.")
+
 		}
 
 		return *response
@@ -892,32 +852,30 @@ func (c *Client) PartyLeave() PartyLookupResponse {
 	}
 	payloadbytes, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("error marschaling")
+
 	}
 
 	req, err := http.NewRequest("DELETE", url, bytes.NewBuffer(payloadbytes))
 	if err != nil {
-		fmt.Println("error")
+
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
 	req.Header.Add("Content-Type", "application/json")
 	resp, requestError := c.c.Do(req)
 	if requestError != nil {
-		fmt.Println("req error: " + requestError.Error())
-		fmt.Println("request error.")
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("io read error.")
+
 	}
 
 	response := &PartyLookupResponse{}
 
 	err = json.Unmarshal(body, response)
 	if err != nil {
-		fmt.Println("error unmarshaling.")
+
 	}
 
 	return *response
@@ -935,7 +893,7 @@ func (c *Client) Set_Skin(SkinID string) *Error {
 	}
 	payloadbytes, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("error marschaling")
+
 	}
 	requestError := c.doNullableRequest("PATCH", url, payloadbytes, false)
 	if requestError != nil {

@@ -52,6 +52,21 @@ func cmain() {
 	client.OnFriendRequest(func(fr *fortnitego.FriendshipRequest) {
 		fmt.Printf("Friendrequest message from: %s, Status: %s\n", fr.From, fr.Status)
 	})
+	client.OnMemberDisconnected(func(pmd *fortnitego.PartyMemberDisconnected) {
+		fmt.Println("member disconnected")
+	})
+	client.OnMemberExpired(func(pme *fortnitego.PartyMemberExpired) {
+		fmt.Println("member expired")
+	})
+	client.OnMemberKicked(func(pmk *fortnitego.PartyMemberKicked) {
+		fmt.Println("Member kicked")
+	})
+	client.OnMemberRequireConfirmation(func(pmrc *fortnitego.PartyMemberRequireConfirmation) {
+		fmt.Println("member needs confirmation")
+	})
+	client.OnPresence(func(s *fortnitego.Presence) {
+		fmt.Println("new presence from: " + s.From)
+	})
 	//call ```client.Listen()```to start listening to messages and receiving callbacks. This is a blocking operation, call it at the end of your func.
 	client.Listen()
 }

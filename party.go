@@ -143,3 +143,15 @@ type PartyMemberLeft struct {
 	AccountID  string `json:"account_id"`
 	RawMessage json.RawMessage
 }
+type PartyMemberKicked struct {
+	RawMessage json.RawMessage
+}
+type PartyMemberExpired struct {
+	RawMessage json.RawMessage
+}
+type PartyMemberDisconnected struct {
+	RawMessage json.RawMessage
+}
+type PartyMemberRequireConfirmation struct {
+	RawMessage json.RawMessage
+}
