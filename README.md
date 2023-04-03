@@ -49,3 +49,4 @@ Inspired by fortnitepy and fnbr.js
 
 - [Docs](https://pkg.go.dev/github.com/oxelf/fortnite-go)
 - [Discord](https://discord.gg/sDt6Zk7bbg)
+- [Examples] (https://github.com/oxelf/fortnite-go/tree/main/Examples)
