@@ -12,7 +12,7 @@ func cmain() {
 		XMPP:       true,
 		Connection: "Fortnite",
 		AuthClient: fortnitego.AuthClients.Fortnite_PC_Client}
-	oauthResponse, eerr := fortnitego.Get_OauthToken_By_AuthCode("41e5491e8944418b86dfbf39c2fba32f", fortnitego.Base64AuthClients.Fortnite_IOS_Client, true)
+	oauthResponse, eerr := fortnitego.Get_Token_By_AuthCode("41e5491e8944418b86dfbf39c2fba32f", fortnitego.Base64AuthClients.Fortnite_IOS_Client, true)
 	if eerr != nil {
 		fmt.Println(eerr.EpicErrorMessage)
 	}

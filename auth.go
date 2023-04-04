@@ -35,10 +35,25 @@ type OauthToken struct {
 	DisplayName      string    `json:"displayName"`
 	ProductID        string    `json:"product_id"`
 }
+type DeviceCode struct {
+	UserCode                 string `json:"user_code"`
+	DeviceCode               string `json:"device_code"`
+	VerificationUri          string `json:"verification_uri"`
+	VerificationUriCompleted string `json:"verification_uri_complete"`
+	Prompt                   string `json:"prompt"`
+	ExpiresInSeconds         int    `json:"expires_in"`
+	Interval                 int    `json:"interval"`
+	ClientID                 string `json:"client_id"`
+}
 type DeviceAuth struct {
 	DeviceID  string `json:"deviceId"`
 	AccountID string `json:"accountId"`
 	Secret    string `json:"secret"`
+}
+type ExchangeToken struct {
+	ExpiresInSeconds int    `json:"expiresInSeconds"`
+	Token            string `json:"code"`
+	AuthClientId     string `json:"creatingClientId"`
 }
 
 var Base64AuthClients = base64AuthClients{
@@ -64,7 +79,7 @@ func GetAuthCodeUrl(authClient string) string {
 // code: the auth code you got from the url
 // base64Client: must be for the same client that u used for getting the auth code.
 // eg1: if true, you will get an eg1 token back. Some endpoints require this type of token. Its smart to use it.
-func Get_OauthToken_By_AuthCode(code string, base64Client string, eg1 bool) (*OauthToken, *Error) {
+func Get_Token_By_AuthCode(code string, base64Client string, eg1 bool) (*OauthToken, *Error) {
 	uri := "https://account-public-service-prod.ol.epicgames.com/account/api/oauth/token"
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
@@ -148,5 +163,362 @@ func Create_DeviceAuth(token string, accountId string) (*DeviceAuth, *Error) {
 			log.Fatalln(err)
 		}
 		return deviceAuth, nil
+	}
+}
+
+// base64Client: Needs to be the same client, thats used for the token to create the device auth.
+//
+// eg1: whetever or not the token should be type eg1.
+//
+// deviceAuth: A DeviceAuth object is required, as the accountID, the DeviceID and the Secret are required for requesting.
+func Get_Token_By_DeviceAuth(deviceAuth DeviceAuth, base64Client string, eg1 bool) (*OauthToken, *Error) {
+	uri := "https://account-public-service-prod.ol.epicgames.com/account/api/oauth/token"
+	data := url.Values{}
+	if eg1 {
+		data.Set("token_type", "eg1")
+	}
+	data.Set("grant_type", "device_auth")
+	data.Set("device_id", deviceAuth.DeviceID)
+	data.Set("secret", deviceAuth.Secret)
+	data.Set("account_id", deviceAuth.AccountID)
+	req, err := http.NewRequest("POST", uri, strings.NewReader(data.Encode()))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if base64Client == "" {
+		return nil, &Error{
+			ErrorMessage: "Please provide an base64 encoded client.",
+		}
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("basic %s", base64Client))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if resp.StatusCode >= 400 {
+		newerr := &Error{}
+		err = json.Unmarshal(body, &newerr)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return nil, newerr
+	} else {
+		token := &OauthToken{}
+		err = json.Unmarshal(body, &token)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return token, nil
+	}
+}
+
+func Get_ExchangeToken(token string) (*ExchangeToken, *Error) {
+	uri := "https://account-public-service-prod.ol.epicgames.com/account/api/oauth/exchange"
+	data := url.Values{}
+	req, err := http.NewRequest("GET", uri, strings.NewReader(data.Encode()))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	} else {
+		return nil, &Error{ErrorMessage: "please provide an bearer token."}
+	}
+	req.Header.Add("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if resp.StatusCode >= 400 {
+		newerr := &Error{}
+		err = json.Unmarshal(body, &newerr)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return nil, newerr
+	} else {
+		exchangeToken := &ExchangeToken{}
+		err = json.Unmarshal(body, &exchangeToken)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		return exchangeToken, nil
+	}
+}
+
+// base64Client: Needs to be the same client, thats used for the token to create the device auth.
+//
+// eg1: whetever or not the token should be type eg1.
+//
+// exchangeToken: Your exchange token
+func Get_Token_By_Exchange(exchangeToken string, base64Client string, eg1 bool) (*OauthToken, *Error) {
+	uri := "https://account-public-service-prod.ol.epicgames.com/account/api/oauth/token"
+	data := url.Values{}
+	if eg1 {
+		data.Set("token_type", "eg1")
+	}
+	if base64Client == "" {
+		return nil, &Error{
+			ErrorMessage: "Please provide an base64 client string.",
+		}
+	}
+	if exchangeToken == "" {
+		return nil, &Error{
+			ErrorMessage: "Please provide an exchangetoken",
+		}
+	}
+	data.Set("grant_type", "exchange_code")
+	data.Set("exchange_code", exchangeToken)
+	req, err := http.NewRequest("POST", uri, strings.NewReader(data.Encode()))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("basic %s", base64Client))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if resp.StatusCode >= 400 {
+		newerr := &Error{}
+		err = json.Unmarshal(body, &newerr)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return nil, newerr
+	} else {
+		token := &OauthToken{}
+		err = json.Unmarshal(body, &token)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return token, nil
+	}
+}
+
+// eg1: whetever or not the token should be type eg1.
+//
+// base64client: The client you want to get an token for.
+func Get_Token_By_ClientCredentials(base64Client string, eg1 bool) (*OauthToken, *Error) {
+	uri := "https://account-public-service-prod.ol.epicgames.com/account/api/oauth/token"
+	data := url.Values{}
+	if eg1 {
+		data.Set("token_type", "eg1")
+	}
+	if base64Client == "" {
+		return nil, &Error{
+			ErrorMessage: "Please provide a base64 client.",
+		}
+	}
+	data.Set("grant_type", "client_credentials")
+	req, err := http.NewRequest("POST", uri, strings.NewReader(data.Encode()))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("basic %s", base64Client))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if resp.StatusCode >= 400 {
+		newerr := &Error{}
+		err = json.Unmarshal(body, &newerr)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return nil, newerr
+	} else {
+		token := &OauthToken{}
+		err = json.Unmarshal(body, &token)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return token, nil
+	}
+}
+
+// eg1: whetever or not the token should be type eg1.
+//
+// refreshtoken: the refresh token you want to exchange for an accesstoken.
+//
+// base64client: The client you want to get an token for.
+func Get_Token_By_Refresh(refreshToken string, base64Client string, eg1 bool) (*OauthToken, *Error) {
+	uri := "https://account-public-service-prod.ol.epicgames.com/account/api/oauth/token"
+	data := url.Values{}
+	if eg1 {
+		data.Set("token_type", "eg1")
+	}
+	if base64Client == "" {
+		return nil, &Error{
+			ErrorMessage: "Please provide a base64 client.",
+		}
+	}
+	if refreshToken == "" {
+		return nil, &Error{
+			ErrorMessage: "Please provide a refresh token.",
+		}
+	}
+	data.Set("grant_type", "refresh_token")
+	data.Set("refresh_token", refreshToken)
+	req, err := http.NewRequest("POST", uri, strings.NewReader(data.Encode()))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("basic %s", base64Client))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if resp.StatusCode >= 400 {
+		newerr := &Error{}
+		err = json.Unmarshal(body, &newerr)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return nil, newerr
+	} else {
+		token := &OauthToken{}
+		err = json.Unmarshal(body, &token)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return token, nil
+	}
+}
+
+// eg1: whetever or not the token should be type eg1.
+//
+// refreshtoken: the deviceCode you want to exchange for an accesstoken.
+//
+// base64client: The same that was used for creating the devicecode.
+func Get_Token_By_DeviceCode(deviceCode string, base64Client string, eg1 bool) (*OauthToken, *Error) {
+	uri := "https://account-public-service-prod.ol.epicgames.com/account/api/oauth/token"
+	data := url.Values{}
+	if eg1 {
+		data.Set("token_type", "eg1")
+	}
+	if base64Client == "" {
+		return nil, &Error{
+			ErrorMessage: "Please provide a base64 client.",
+		}
+	}
+	if deviceCode == "" {
+		return nil, &Error{
+			ErrorMessage: "Please provide a deviceCode.",
+		}
+	}
+	data.Set("grant_type", "device_code")
+	data.Set("device_code", deviceCode)
+	req, err := http.NewRequest("POST", uri, strings.NewReader(data.Encode()))
+	if err != nil {
+		log.Fatalln(err)
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("basic %s", base64Client))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if resp.StatusCode >= 400 {
+		newerr := &Error{}
+		err = json.Unmarshal(body, &newerr)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return nil, newerr
+	} else {
+		token := &OauthToken{}
+		err = json.Unmarshal(body, &token)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return token, nil
+	}
+}
+func Get_DeviceCode(token string) (*DeviceCode, *Error) {
+	uri := "https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/deviceAuthorization"
+	data := url.Values{}
+
+	req, err := http.NewRequest("POST", uri, strings.NewReader(data.Encode()))
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", token))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if resp.StatusCode >= 400 {
+		newerr := &Error{}
+		err = json.Unmarshal(body, &newerr)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return nil, newerr
+	} else {
+		deviceCode := &DeviceCode{}
+		err = json.Unmarshal(body, &deviceCode)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		return deviceCode, nil
 	}
 }

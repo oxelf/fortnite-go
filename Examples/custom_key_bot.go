@@ -49,7 +49,7 @@ func main() {
 		AuthClient: fortnitego.AuthClients.Fortnite_PC_Client}
 	url := fortnitego.GetAuthCodeUrl(fortnitego.AuthClients.Fortnite_IOS_Client)
 	fmt.Println(url)
-	val, eerr := fortnitego.Get_OauthToken_By_AuthCode("3cb997fb0a5844bb90ba49492abbc298", fortnitego.Base64AuthClients.Fortnite_IOS_Client, true)
+	val, eerr := fortnitego.Get_Token_By_AuthCode("3cb997fb0a5844bb90ba49492abbc298", fortnitego.Base64AuthClients.Fortnite_IOS_Client, true)
 	if eerr != nil {
 		fmt.Println(eerr.EpicErrorMessage)
 	} else {
