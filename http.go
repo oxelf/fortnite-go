@@ -268,6 +268,34 @@ func DownloadReplayCDNFile(url string) (*Replay, *Error) {
 	}
 }
 
+func DownloadReplayChunk(chunkId string, matchId string) (*Replay, *Error) {
+	c := http.Client{}
+	payload := []byte{}
+	url := fmt.Sprintf("%s/%s/%s.bin", ReplayBaseDataUrl, matchId, chunkId)
+	req, nerr := http.NewRequest("GET", url, bytes.NewBuffer(payload))
+	if nerr != nil {
+
+	}
+	req.Header.Add("User-Agent", "Tournament replay downloader")
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, &Error{
+			ErrorMessage: nerr.Error(),
+		}
+	} else {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, &Error{ErrorMessage: "IO Read Error."}
+		}
+		var replay Replay
+		rerr := json.Unmarshal(body, &replay)
+		if rerr != nil {
+
+		}
+		return &replay, nil
+	}
+}
+
 //###################################
 //#       LightSwitchService        #
 //###################################

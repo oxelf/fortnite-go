@@ -30,3 +30,5 @@ type DataChunk struct {
 	Time2       int    `json:"Time2"`
 	SizeInBytes int    `json:"SizeInBytes"`
 }
+
+const ReplayBaseDataUrl = "https://datastorage-public-service-live.ol.epicgames.com/api/v1/access/fnreplays/public"
