@@ -1,6 +1,7 @@
 package fortnitego
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,11 +16,13 @@ type authclients struct {
 	Fortnite_IOS_Client    string
 	Fortnite_PC_Client     string
 	Fortnite_SWITCH_Client string
+	Launcher_Client_2      string
 }
 type base64AuthClients struct {
 	Fortnite_IOS_Client    string
 	Fortnite_PC_Client     string
 	Fortnite_SWITCH_Client string
+	Launcher_Client_2      string
 }
 type OauthToken struct {
 	AccessToken      string    `json:"access_token"`
@@ -60,12 +63,14 @@ var Base64AuthClients = base64AuthClients{
 	Fortnite_PC_Client:     "ZWM2ODRiOGM2ODdmNDc5ZmFkZWEzY2IyYWQ4M2Y1YzY6ZTFmMzFjMjExZjI4NDEzMTg2MjYyZDM3YTEzZmM4NGQ=",
 	Fortnite_IOS_Client:    "MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE=",
 	Fortnite_SWITCH_Client: "OThmN2U0MmMyZTNhNGY4NmE3NGViNDNmYmI0MWVkMzk6MGEyNDQ5YTItMDAxYS00NTFlLWFmZWMtM2U4MTI5MDFjNGQ3",
+	Launcher_Client_2:      "MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzZmOWE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc2Y2Y=",
 }
 
 var AuthClients = authclients{
 	Fortnite_IOS_Client:    "3446cd72694c4a4485d81b77adbb2141",
 	Fortnite_PC_Client:     "ec684b8c687f479fadea3cb2ad83f5c6",
 	Fortnite_SWITCH_Client: "98f7e42c2e3a4f86a74eb43fbb41ed39",
+	Launcher_Client_2:      "34a02cf8f4414e29b15921876da36f9a",
 }
 
 func GetAuthCodeUrl(authClient string) string {
@@ -87,7 +92,8 @@ func Get_Token_By_AuthCode(code string, base64Client string, eg1 bool) (*OauthTo
 	if eg1 {
 		data.Set("token_type", "eg1")
 	}
-	req, err := http.NewRequest("POST", uri, strings.NewReader(data.Encode()))
+	urlEncodedPayload := []byte(data.Encode())
+	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(urlEncodedPayload))
 	if err != nil {
 		log.Fatalln(err)
 	}

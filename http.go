@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strconv"
 )
 
@@ -103,6 +103,11 @@ type FileData struct {
 	Files map[string]FileInfo `json:"files"`
 }
 
+type AccessResponse struct {
+	Play     bool `json:"play"`
+	IsBanned bool `json:"isBanned"`
+}
+
 type S3Data struct {
 	Data FileData `json:"data"`
 }
@@ -192,6 +197,8 @@ func (c *Client) doRequest(method string, url string, payload []byte, urlEncoded
 	res, err := c.c.Do(req)
 	if res.StatusCode == 204 || res.StatusCode == 200 {
 		body, err := io.ReadAll(res.Body)
+		byteString := string(body)
+		fmt.Println(byteString)
 		if err != nil {
 			return &Error{ErrorMessage: "IO Read Error."}, nil
 		}
@@ -242,7 +249,7 @@ func (c *Client) FileLocationInfo(url string) (*FileLocationInfo, *Error) {
 // #       	   Replays     	        #
 // ###################################
 // https://datastorage-public-service-live.ol.epicgames.com/api/v1/access/fnreplaysmetadata/public
-func DownloadReplayCDNFile(url string) (*Replay, *Error) {
+func GetReplayMetadata(url string) (*Replay, *Error) {
 	c := http.Client{}
 	payload := []byte{}
 	req, nerr := http.NewRequest("GET", url, bytes.NewBuffer(payload))
@@ -268,10 +275,10 @@ func DownloadReplayCDNFile(url string) (*Replay, *Error) {
 	}
 }
 
-func DownloadReplayChunk(chunkId string, matchId string) (*Replay, *Error) {
+func GetReplayEventOrChunk(url string) (*[]byte, *Error) {
 	c := http.Client{}
 	payload := []byte{}
-	url := fmt.Sprintf("%s/%s/%s.bin", ReplayBaseDataUrl, matchId, chunkId)
+
 	req, nerr := http.NewRequest("GET", url, bytes.NewBuffer(payload))
 	if nerr != nil {
 
@@ -283,16 +290,11 @@ func DownloadReplayChunk(chunkId string, matchId string) (*Replay, *Error) {
 			ErrorMessage: nerr.Error(),
 		}
 	} else {
-		body, err := io.ReadAll(resp.Body)
+		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return nil, &Error{ErrorMessage: "IO Read Error."}
 		}
-		var replay Replay
-		rerr := json.Unmarshal(body, &replay)
-		if rerr != nil {
-
-		}
-		return &replay, nil
+		return &body, nil
 	}
 }
 
@@ -309,73 +311,6 @@ func (c *Client) LightSwitch_Status_Fortnite() (*LightSwitchResponse, *Error) {
 		return nil, err
 	} else {
 		return &lightSwitchResponse, nil
-	}
-}
-
-//###################################
-//#            Friends              #
-//###################################
-
-func (c *Client) Friends_Add_Or_Accept(friendId string) *Error {
-	url := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s", BaseRoute.FriendsPublicService, c.Config.AccountID, friendId)
-	payload := []byte{}
-	requestError := c.doNullableRequest("POST", url, payload, false)
-	if requestError != nil {
-		return requestError
-	} else {
-		return nil
-	}
-}
-
-func (c *Client) Friends_Remove_Or_Decline(friendId string) *Error {
-	url := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s", BaseRoute.FriendsPublicService, c.Config.AccountID, friendId)
-	payload := []byte{}
-	requestError := c.doNullableRequest("DELETE", url, payload, false)
-	if requestError != nil {
-		return requestError
-	} else {
-		return nil
-	}
-}
-
-func (c *Client) Friends_Get_All() ([]Friend, *Error) {
-	url := fmt.Sprintf("%s/friends/api/public/friends/%s", BaseRoute.FriendsPublicService, c.Config.AccountID)
-	payload := []byte{}
-	var friendList []Friend
-	err, _ := c.doRequest("GET", url, payload, false, &friendList)
-	if err != nil {
-		return nil, err
-	} else {
-		return friendList, nil
-	}
-}
-
-func (c *Client) Friends_Get_Blocklist() ([]Friend, *Error) {
-	url := fmt.Sprintf("%s/friends/api/v1/%s/blocklist", BaseRoute.FriendsPublicService, c.Config.AccountID)
-	payload := []byte{}
-	var blockList []Friend
-	err, _ := c.doRequest("GET", url, payload, false, &blockList)
-	if err != nil {
-		return nil, err
-	} else {
-		return *&blockList, nil
-	}
-}
-
-// Currently not working!!! Problem is the body.
-func (c *Client) Friends_Set_Nickname(nickName string, friendID string) *Error {
-	uri := fmt.Sprintf("%s/friends/api/v1/%s/friends/%s/alias", BaseRoute.FriendsPublicService, c.Config.AccountID, friendID)
-	encodedPayload := url.QueryEscape(nickName)
-	bodyBytes := []byte(encodedPayload)
-	body := url.Values{}
-	body.Set("nick", nickName)
-	//bodyString := body.Encode()
-	//payload := []byte(bodyString)
-	requestError := c.doNullableRequest("PUT", uri, bodyBytes, true)
-	if requestError != nil {
-		return requestError
-	} else {
-		return nil
 	}
 }
 
