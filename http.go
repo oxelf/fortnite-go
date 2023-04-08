@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
+
 	"net/http"
 	"strconv"
 )
@@ -123,6 +123,11 @@ type JoinRequestPayload struct {
 	Meta       Meta       `json:"meta"`
 }
 
+type JoinRequestResponse struct {
+	Status  string `json:"status"`
+	PartyID string `json:"party_id"`
+}
+
 var BaseRoute = BaseRoutes{
 	FriendsPublicService:      "https://friends-public-service-prod.ol.epicgames.com",
 	PartyPublicService:        "https://party-service-prod.ol.epicgames.com",
@@ -143,6 +148,7 @@ var BaseRoute = BaseRoutes{
 //###################################
 
 // used for operations that doesnt send a neccessary payload back.
+// NOTE: Is only for internal usage.
 func (c *Client) doNullableRequest(method string, url string, payload []byte, urlEncoded bool) *Error {
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(payload))
 	if err != nil {
@@ -156,6 +162,11 @@ func (c *Client) doNullableRequest(method string, url string, payload []byte, ur
 	}
 	res, err := c.c.Do(req)
 	if res.StatusCode == 204 || res.StatusCode == 200 {
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return &Error{ErrorMessage: "IO Read Error."}
+		}
+		fmt.Sprintf(string(body))
 		c.Party.PartyRevision = c.Party.PartyRevision + 1
 		return nil
 	} else {
@@ -183,6 +194,7 @@ func (c *Client) doNullableRequest(method string, url string, payload []byte, ur
 }
 
 // used for operations that send a neccessary payload back.
+// NOTE: Is only for internal usage.
 func (c *Client) doRequest(method string, url string, payload []byte, urlEncoded bool, out interface{}) (*Error, interface{}) {
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(payload))
 	if err != nil {
@@ -234,6 +246,10 @@ func (c *Client) doRequest(method string, url string, payload []byte, urlEncoded
 //#       	   Files     	        #
 //###################################
 
+// Get Information on a specific file. Example:
+//
+//	sessionId := "8c9e7d3608914b0897dd7fa76406eda9"
+//	fileLocation, _ := client.FileLocationInfo(fmt.Sprint("https://datastorage-public-service-live.ol.epicgames.com/api/v1/access/fnreplaysmetadata/public%2F" + sessionId + ".json"))
 func (c *Client) FileLocationInfo(url string) (*FileLocationInfo, *Error) {
 	payload := []byte{}
 	var fileLocationInfo FileLocationInfo
@@ -245,63 +261,11 @@ func (c *Client) FileLocationInfo(url string) (*FileLocationInfo, *Error) {
 	}
 }
 
-// ###################################
-// #       	   Replays     	        #
-// ###################################
-// https://datastorage-public-service-live.ol.epicgames.com/api/v1/access/fnreplaysmetadata/public
-func GetReplayMetadata(url string) (*Replay, *Error) {
-	c := http.Client{}
-	payload := []byte{}
-	req, nerr := http.NewRequest("GET", url, bytes.NewBuffer(payload))
-	if nerr != nil {
-
-	}
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, &Error{
-			ErrorMessage: nerr.Error(),
-		}
-	} else {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, &Error{ErrorMessage: "IO Read Error."}
-		}
-		var replay Replay
-		rerr := json.Unmarshal(body, &replay)
-		if rerr != nil {
-
-		}
-		return &replay, nil
-	}
-}
-
-func GetReplayEventOrChunk(url string) (*[]byte, *Error) {
-	c := http.Client{}
-	payload := []byte{}
-
-	req, nerr := http.NewRequest("GET", url, bytes.NewBuffer(payload))
-	if nerr != nil {
-
-	}
-	req.Header.Add("User-Agent", "Tournament replay downloader")
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, &Error{
-			ErrorMessage: nerr.Error(),
-		}
-	} else {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, &Error{ErrorMessage: "IO Read Error."}
-		}
-		return &body, nil
-	}
-}
-
 //###################################
 //#       LightSwitchService        #
 //###################################
 
+// Get the Status of the Fortnite servers.
 func (c *Client) LightSwitch_Status_Fortnite() (*LightSwitchResponse, *Error) {
 	url := "http://lightswitch-public-service-prod.ol.epicgames.com/lightswitch/api/service/fortnite/status"
 	payload := []byte{}
@@ -318,6 +282,7 @@ func (c *Client) LightSwitch_Status_Fortnite() (*LightSwitchResponse, *Error) {
 //#             Party               #
 //###################################
 
+// Sends intention to a specific party. I dont really know what its used for.
 func (c *Client) PartySendIntention(userId string) *Error {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/members/%s/intentions/%s", BaseRoute.PartyPublicService, userId, c.Config.AccountID)
 	payload, err := json.Marshal(&IntentionPayload{Urn: ""})
@@ -334,6 +299,7 @@ func (c *Client) PartySendIntention(userId string) *Error {
 	}
 }
 
+// Get Information on a party using its partyId.
 func (c *Client) PartyLookup(partyID string) (*PartyLookupResponse, *Error) {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s", BaseRoute.PartyPublicService, partyID)
 	payload, err := json.Marshal(&IntentionPayload{Urn: ""})
@@ -354,6 +320,7 @@ func (c *Client) PartyLookup(partyID string) (*PartyLookupResponse, *Error) {
 	}
 }
 
+// TODO: Struct for this.
 func (c *Client) PartyLookupPing(userId string, clientId string) *PartyLookupResponse {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/user/%s/pings/%s/parties", BaseRoute.PartyPublicService, clientId, userId)
 	payload, err := json.Marshal(&IntentionPayload{Urn: ""})
@@ -389,47 +356,26 @@ func (c *Client) PartyLookupPing(userId string, clientId string) *PartyLookupRes
 	}
 }
 
-func (c *Client) PartySendInvite(userId string) PartyLookupResponse {
+// TODO: Struct or error
+func (c *Client) PartySendInvite(userId string) *Error {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/user/%s", BaseRoute.PartyPublicService, userId)
 	payload := map[string]string{
-		"urn:epic:cfg:build-id_s":        "1:3:24395311",
+		"urn:epic:cfg:build-id_s":        "1:3:",
 		"urn:epic:conn:platform_s":       "WIN",
 		"urn:epic:conn:type_s":           "game",
 		"urn:epic:invite:platformdata_s": "",
-		"urn:epic:member:dn_s":           "oxelf ay",
+		"urn:epic:member:dn_s":           c.Config.DisplayName,
 	}
-	payloadbytes, err := json.Marshal(payload)
-	if err != nil {
-
+	payloadbytes, _ := json.Marshal(payload)
+	ReqError := c.doNullableRequest("GET", url, payloadbytes, false)
+	if ReqError != nil {
+		return ReqError
+	} else {
+		return nil
 	}
-	req, err := http.NewRequest("GET", url, bytes.NewBuffer(payloadbytes))
-	if err != nil {
-
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
-	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.c.Do(req)
-	if requestError != nil {
-
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-
-	}
-
-	response := &PartyLookupResponse{}
-
-	err = json.Unmarshal(body, response)
-	if err != nil {
-
-	}
-
-	return *response
 }
 
-func (c *Client) PartySendJoinRequest(jid string, partyId string) PartyLookupResponse {
+func (c *Client) PartySendJoinRequest(jid string, partyId string) (*JoinRequestResponse, *Error) {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/join", BaseRoute.PartyPublicService, partyId, c.Config.AccountID)
 	payload := map[string]interface{}{
 		"connection": map[string]interface{}{
@@ -442,40 +388,21 @@ func (c *Client) PartySendJoinRequest(jid string, partyId string) PartyLookupRes
 			"offline_ttl":      30,
 		},
 		"meta": map[string]interface{}{
-			"urn:epic:member:dn_s":               "oxibot 001",
-			"urn:epic:member:joinrequestusers_j": fmt.Sprintf("{\"users\":[{\"id\":\"%s\", \"dn\":\"oxelf ay\",\"plat\":\"WIN\",\"data\":{\"CrossplayPreference\": \"1\", \"SubGame_u\": \"1\"}}]}", c.Config.AccountID),
+			"urn:epic:member:dn_s":               c.Config.DisplayName,
+			"urn:epic:member:joinrequestusers_j": fmt.Sprintf("{\"users\":[{\"id\":\"%s\", \"dn\":\"%s\",\"plat\":\"WIN\",\"data\":{\"CrossplayPreference\": \"1\", \"SubGame_u\": \"1\"}}]}", c.Config.AccountID, c.Config.DisplayName),
 		},
 	}
 	payloadbytes, err := json.Marshal(payload)
 	if err != nil {
 
 	}
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadbytes))
-	if err != nil {
-
+	var response JoinRequestResponse
+	ReqError, _ := c.doRequest("POST", url, payloadbytes, false, &response)
+	if ReqError != nil {
+		return nil, ReqError
+	} else {
+		return &response, nil
 	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
-	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.c.Do(req)
-	if requestError != nil {
-
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-
-	}
-
-	response := &PartyLookupResponse{}
-
-	err = json.Unmarshal(body, response)
-	if err != nil {
-
-	}
-
-	return *response
 }
 
 //	payload = {
@@ -484,318 +411,136 @@ func (c *Client) PartySendJoinRequest(jid string, partyId string) PartyLookupRes
 //		'override': overridden_meta,
 //		'revision': revision,
 //	}
-func (c *Client) PartyUpdateMemberMeta(p *PartyMemberMeta) PartyLookupResponse {
-	emoteString := ""
-	characterString := ""
-	if p.Location == "" {
-		p.Location = "PreLobby"
-	}
-	if p.Emote == "" {
-		p.Emote = "None"
-		emoteString = ""
-	} else {
-		emoteString = fmt.Sprintf("/Game/Athena/Items/Cosmetics/Dances/%s.%s", p.Emote, p.Emote)
-	}
-	if p.CosmeticLoadout.Character == "" {
-		p.CosmeticLoadout.Character = "None"
-		characterString = "None"
-	} else {
-		characterString = fmt.Sprintf("/Game/Athena/Items/Cosmetics/Characters/%s.%s", p.CosmeticLoadout.Character, p.CosmeticLoadout.Character)
-	}
+func (c *Client) PartyUpdateMemberMeta(updatedMeta map[string]interface{}) *Error {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, c.Config.AccountID)
 	payload := map[string]interface{}{
 		"delete":   []string{},
-		"revision": 0,
-		"override": map[string]interface{}{},
-		"update": map[string]interface{}{
-			"Default:AthenaCosmeticLoadout_j": fmt.Sprintf("{\"AthenaCosmeticLoadout\":{\"characterDef\":\"%s\",\"characterEKey\":\"\",\"backpackDef\":\"None\",\"backpackEKey\":\"\",\"pickaxeDef\":\"/Game/Athena/Items/Cosmetics/Pickaxes/Pickaxe_ID_015_HolidayCandyCane.Pickaxe_ID_015_HolidayCandyCane\",\"pickaxeEKey\":\"\",\"contrailDef\":\"/Game/Athena/Items/Cosmetics/Contrails/Contrail_RedPepper.Contrail_RedPepper\",\"contrailEKey\":\"\",\"scratchpad\":[],\"cosmeticStats\":[{\"statName\":\"TotalVictoryCrowns\",\"statValue\":6},{\"statName\":\"TotalRoyalRoyales\",\"statValue\":0},{\"statName\":\"HasCrown\",\"statValue\":0}]}}", characterString),
-			"Default:FrontendEmote_j":         fmt.Sprintf("{\"FrontendEmote\":{\"emoteItemDef\":\"%s\",\"emoteEKey\":\"\",\"emoteSection\":-1}}", emoteString),
-		},
-	}
-
-	payloadbytes, err := json.Marshal(payload)
-	if err != nil {
-
-	}
-
-	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
-
-	if err != nil {
-
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
-	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.c.Do(req)
-	if requestError != nil {
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-	}
-
-	response := &PartyLookupResponse{}
-
-	err = json.Unmarshal(body, response)
-	if err != nil {
-	}
-
-	return *response
-}
-func (c *Client) PartySendInitialMemberData(p *PartyMemberMeta) PartyLookupResponse {
-	emoteString := ""
-	characterString := ""
-	if p.Location == "" {
-		p.Location = "PreLobby"
-	}
-	if p.Emote == "" {
-		p.Emote = "None"
-		emoteString = ""
-	} else {
-		emoteString = fmt.Sprintf("/Game/Athena/Items/Cosmetics/Dances/%s.%s", p.Emote, p.Emote)
-	}
-	if p.CosmeticLoadout.Character == "" {
-		p.CosmeticLoadout.Character = "None"
-		characterString = "None"
-	} else {
-		characterString = fmt.Sprintf("/Game/Athena/Items/Cosmetics/Characters/%s.%s", p.CosmeticLoadout.Character, p.CosmeticLoadout.Character)
-	}
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, c.Config.AccountID)
-	payload := map[string]interface{}{
-		"delete":   []string{},
-		"revision": 0,
-		"override": map[string]interface{}{},
-		"update": map[string]interface{}{
-			"Default:AthenaCosmeticLoadout_j": fmt.Sprintf("{\"AthenaCosmeticLoadout\":{\"characterDef\":\"%s\",\"characterEKey\":\"\",\"backpackDef\":\"None\",\"backpackEKey\":\"\",\"pickaxeDef\":\"/Game/Athena/Items/Cosmetics/Pickaxes/Pickaxe_ID_015_HolidayCandyCane.Pickaxe_ID_015_HolidayCandyCane\",\"pickaxeEKey\":\"\",\"contrailDef\":\"/Game/Athena/Items/Cosmetics/Contrails/Contrail_RedPepper.Contrail_RedPepper\",\"contrailEKey\":\"\",\"scratchpad\":[],\"cosmeticStats\":[{\"statName\":\"TotalVictoryCrowns\",\"statValue\":6},{\"statName\":\"TotalRoyalRoyales\",\"statValue\":0},{\"statName\":\"HasCrown\",\"statValue\":0}]}}", characterString),
-			"Default:FrontendEmote_j":         fmt.Sprintf("{\"FrontendEmote\":{\"emoteItemDef\":\"%s\",\"emoteEKey\":\"\",\"emoteSection\":-1}}", emoteString),
-		},
-	}
-
-	payloadbytes, err := json.Marshal(payload)
-	if err != nil {
-	}
-
-	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
-
-	if err != nil {
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
-	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.c.Do(req)
-	if requestError != nil {
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-	}
-
-	response := &PartyLookupResponse{}
-
-	err = json.Unmarshal(body, response)
-	if err != nil {
-	}
-
-	return *response
-}
-
-func (c *Client) SetEmote(partyId string, eID string) PartyLookupResponse {
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, partyId, c.Config.AccountID)
-	payload := map[string]interface{}{
-		"delete":   []string{},
-		"revision": 2,
-		"override": map[string]interface{}{},
-		"update": map[string]interface{}{
-			"Default:FrontendEmote_j": fmt.Sprintf("{\"FrontendEmote\":{\"emoteItemDef\":\"/Game/Athena/Items/Cosmetics/Dances/%s.%s\",\"emoteEKey\":\"\",\"emoteSection\":1}}", eID, eID),
-		},
-	}
-
-	payloadbytes, err := json.Marshal(payload)
-	if err != nil {
-	}
-
-	request, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
-
-	if err != nil {
-	}
-
-	request.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
-	request.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.c.Do(request)
-	if requestError != nil {
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-	}
-
-	response := &PartyLookupResponse{}
-
-	err = json.Unmarshal(body, response)
-	if err != nil {
-	}
-
-	return *response
-}
-
-func (c *Client) SetCustomKey(newKey string) PartyLookupResponse {
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s", BaseRoute.PartyPublicService, c.Config.AccountID)
-	payload := map[string]interface{}{
 		"revision": c.Party.PartyRevision,
-		"meta": map[string]interface{}{
-			"delete": []string{},
-			"update": map[string]interface{}{
-				"Default:CustomMatchKey_s": newKey,
-			}},
+		"override": map[string]interface{}{},
+		"update":   updatedMeta,
 	}
-
-	payloadbytes, err := json.Marshal(payload)
+	payloadbytes, _ := json.Marshal(payload)
+	err := c.doNullableRequest("PATCH", url, payloadbytes, false)
 	if err != nil {
+		return err
+	} else {
+		return nil
 	}
-
-	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
-
-	if err != nil {
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
-	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.c.Do(req)
-	if requestError != nil {
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-	}
-	var epicError Error
-	err = json.Unmarshal([]byte(body), &epicError)
-	if err != nil {
-		// handle error
-	}
-	if epicError.EpicErrorCode != "" {
-		newRev, convErr := strconv.Atoi(epicError.EpicMessageVars[1])
-		if convErr != nil {
-
-		}
-		c.Party.PartyRevision = newRev
-		c.SetCustomKey(newKey)
-	}
-
-	response := &PartyLookupResponse{}
-
-	err = json.Unmarshal(body, response)
-	if err != nil {
-	}
-
-	return *response
 }
-func (c *Client) SetReadiness(partyId string, ready bool) PartyLookupResponse {
+
+func (c *Client) PartyUpdateMeta(updatedMeta map[string]interface{}) *Error {
+	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, c.Party.Id, c.Config.AccountID)
+	payload := map[string]interface{}{
+		"delete":   []string{},
+		"revision": c.Party.PartyRevision,
+		"override": map[string]interface{}{},
+		"update":   updatedMeta,
+	}
+	payloadbytes, _ := json.Marshal(payload)
+	err := c.doNullableRequest("PATCH", url, payloadbytes, false)
+	if err != nil {
+		return err
+	} else {
+		return nil
+	}
+}
+
+func (c *Client) SetEmote(eID string) *Error {
+	cerr := c.CancelEmote()
+	if cerr != nil {
+		return cerr
+	}
+	payload := map[string]interface{}{
+		"Default:FrontendEmote_j": fmt.Sprintf("{\"FrontendEmote\":{\"emoteItemDef\":\"/Game/Athena/Items/Cosmetics/Dances/%s.%s\",\"emoteSection\":-1}}", eID, eID),
+	}
+	err := c.PartyUpdateMemberMeta(payload)
+	if err != nil {
+		if err.EpicErrorCode == "errors.com.epicgames.social.party.stale_revision" {
+			newRevision, _ := strconv.Atoi(err.EpicMessageVars[1])
+			c.Party.PartyRevision = newRevision
+			c.SetEmote(eID)
+		}
+		return err
+	} else {
+		return nil
+	}
+}
+
+func (c *Client) CancelEmote() *Error {
+	payload := map[string]interface{}{
+		"Default:FrontendEmote_j": "{\"FrontendEmote\":{\"emoteItemDef\":\"None\",\"emoteEKey\":\"\",\"emoteSection\":-1}}",
+	}
+	err := c.PartyUpdateMemberMeta(payload)
+	if err != nil {
+		if err.EpicErrorCode == "errors.com.epicgames.social.party.stale_revision" {
+			newRevision, _ := strconv.Atoi(err.EpicMessageVars[1])
+			c.Party.PartyRevision = newRevision
+			c.CancelEmote()
+		}
+		return err
+	} else {
+		return nil
+	}
+}
+
+func (c *Client) SetCustomKey(newKey string) *Error {
+	payload := map[string]interface{}{
+		"Default:CustomMatchKey_s": newKey,
+	}
+	err := c.PartyUpdateMemberMeta(payload)
+	if err != nil {
+		if err.EpicErrorCode == "errors.com.epicgames.social.party.stale_revision" {
+			newRevision, _ := strconv.Atoi(err.EpicMessageVars[1])
+			c.Party.PartyRevision = newRevision
+			c.SetCustomKey(newKey)
+		}
+		return err
+	} else {
+		return nil
+	}
+}
+func (c *Client) SetReadiness(ready bool) *Error {
 	var readyString = ""
 	if ready {
 		readyString = "Ready"
 	} else {
 		readyString = "NotReady"
 	}
-
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s/meta", BaseRoute.PartyPublicService, partyId, c.Config.AccountID)
 	payload := map[string]interface{}{
-		"delete":   []string{},
-		"revision": 1,
-		"override": map[string]interface{}{},
-		"update": map[string]interface{}{
-			"Default:LobbyState_j": fmt.Sprintf("{\"LobbyState\":{\"inGameReadyCheckStatus\":\"None\",\"gameReadiness\":\"%s\",\"readyInputType\":\"Touch\",\"currentInputType\":\"Touch\",\"hiddenMatchmakingDelayMax\":0,\"hasPreloadedAthena\":true}}", readyString),
-		},
+		"Default:LobbyState_j": fmt.Sprintf("{\"LobbyState\":{\"inGameReadyCheckStatus\":\"None\",\"gameReadiness\":\"SittingOut\",\"readyInputType\":\"Touch\",\"currentInputType\":\"Touch\",\"hiddenMatchmakingDelayMax\":0,\"hasPreloadedAthena\":true}}", readyString),
 	}
-
-	payloadbytes, err := json.Marshal(payload)
+	err := c.PartyUpdateMemberMeta(payload)
 	if err != nil {
+		if err.EpicErrorCode == "errors.com.epicgames.social.party.stale_revision" {
+			newRevision, _ := strconv.Atoi(err.EpicMessageVars[1])
+			c.Party.PartyRevision = newRevision
+			c.SetReadiness(ready)
+		}
+		return err
+	} else {
+		return nil
 	}
-
-	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
-
-	if err != nil {
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
-	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.c.Do(req)
-
-	if requestError != nil {
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-	}
-
-	response := &PartyLookupResponse{}
-
-	err = json.Unmarshal(body, response)
-	if err != nil {
-	}
-
-	return *response
 }
 
 // "Default:ActivityName_s":"","Default:PlaylistData_j":"{\"PlaylistData\":{\"playlistName\":\"Playlist_ShowdownAlt_Duos\",\"tournamentId\":\"epicgames_Arena_S24_Duos\",\"eventWindowId\":\"Arena_S24_Division6_Duos\",\"regionId\":\"EU\",\"linkId\":{\"mnemonic\":\"tournament_epicgames_arena_duos\",\"version\":1},\"bGracefullyUpgraded\":false,\"matchmakingRulePreset\":\"RespectParties\"}}","Default:MatchmakingState_j":"{\"MatchmakingState\":{\"currentMatchmakingState\":{\"linkId\":{\"mnemonic\":\"tournament_epicgames_arena_duos\",\"version\":1},\"requester\":\"INVALID\",\"dataStateId\":12199},\"requestedMatchmakingState\":{\"linkId\":{\"mnemonic\":\"playlist_defaultduo\",\"version\":-1},\"requester\":\"INVALID\",\"dataStateId\":12199},\"coordinatorBroadcast\":\"ReadyForRequests\"}}","Default:ActivityType_s":"BR"
-func (c *Client) SetPlaylist() PartyLookupResponse {
-	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s", BaseRoute.PartyPublicService, c.Party.Id)
+func (c *Client) SetPlaylist() *Error {
+
 	payload := map[string]interface{}{
-		"revision": c.Party.PartyRevision,
-		"meta": map[string]interface{}{
-			"delete": []string{},
-			"update": map[string]interface{}{
-				"Default:PlaylistData_j": "{\"PlaylistData\":{\"playlistName\":\"Playlist_ShowdownAlt_Duos\",\"tournamentId\":\"epicgames_Arena_S24_Duos\",\"eventWindowId\":\"Arena_S24_Division6_Duos\",\"regionId\":\"EU\",\"linkId\":{\"mnemonic\":\"tournament_epicgames_arena_duos\",\"version\":1},\"bGracefullyUpgraded\":false,\"matchmakingRulePreset\":\"RespectParties\"}}", "Default:MatchmakingState_j": "{\"MatchmakingState\":{\"currentMatchmakingState\":{\"linkId\":{\"mnemonic\":\"tournament_epicgames_arena_duos\",\"version\":1},\"requester\":\"INVALID\",\"dataStateId\":12199},\"requestedMatchmakingState\":{\"linkId\":{\"mnemonic\":\"playlist_defaultduo\",\"version\":-1},\"requester\":\"INVALID\",\"dataStateId\":12199},\"coordinatorBroadcast\":\"ReadyForRequests\"}}",
-			}},
+		"Default:PlaylistData_j": "{\"PlaylistData\":{\"playlistName\":\"Playlist_ShowdownAlt_Duos\",\"tournamentId\":\"epicgames_Arena_S24_Duos\",\"eventWindowId\":\"Arena_S24_Division6_Duos\",\"regionId\":\"EU\",\"linkId\":{\"mnemonic\":\"tournament_epicgames_arena_duos\",\"version\":1},\"bGracefullyUpgraded\":false,\"matchmakingRulePreset\":\"RespectParties\"}}",
 	}
-
-	payloadbytes, err := json.Marshal(payload)
+	err := c.PartyUpdateMemberMeta(payload)
 	if err != nil {
-
-	}
-
-	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(payloadbytes))
-
-	if err != nil {
-
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("bearer %s", c.Config.Token))
-	req.Header.Add("Content-Type", "application/json")
-	resp, requestError := c.c.Do(req)
-
-	if requestError != nil {
-
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-
-	}
-	var epicError Error
-	err = json.Unmarshal([]byte(body), &epicError)
-	if err != nil {
-		// handle error
-	}
-	if epicError.EpicErrorCode != "" {
-		newRev, convErr := strconv.Atoi(epicError.EpicMessageVars[1])
-		if convErr != nil {
-
+		if err.EpicErrorCode == "errors.com.epicgames.social.party.stale_revision" {
+			newRevision, _ := strconv.Atoi(err.EpicMessageVars[1])
+			c.Party.PartyRevision = newRevision
+			c.SetPlaylist()
 		}
-		c.Party.PartyRevision = newRev
-		c.SetPlaylist()
+		return err
 	} else {
-
-		response := &PartyLookupResponse{}
-
-		err = json.Unmarshal(body, response)
-		if err != nil {
-
-		}
-
-		return *response
+		return nil
 	}
-	return PartyLookupResponse{}
 }
+
 func (c *Client) PartyLeave() PartyLookupResponse {
 	url := fmt.Sprintf("%s/party/api/v1/Fortnite/parties/%s/members/%s", BaseRoute.PartyPublicService, c.Party.Id, c.Config.AccountID)
 	payload := map[string]interface{}{

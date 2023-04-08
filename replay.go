@@ -1,6 +1,13 @@
 package fortnitego
 
-import "time"
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"time"
+)
 
 type Replay struct {
 	ReplayId              string       `json:"ReplayName"`
@@ -32,3 +39,56 @@ type DataChunk struct {
 }
 
 const ReplayBaseDataUrl = "https://datastorage-public-service-live.ol.epicgames.com/api/v1/access/fnreplays/public"
+
+// ###################################
+// #       	   Replays     	        #
+// ###################################
+// https://datastorage-public-service-live.ol.epicgames.com/api/v1/access/fnreplaysmetadata/public
+func GetReplayMetadata(url string) (*Replay, *Error) {
+	c := http.Client{}
+	payload := []byte{}
+	req, nerr := http.NewRequest("GET", url, bytes.NewBuffer(payload))
+	if nerr != nil {
+
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, &Error{
+			ErrorMessage: nerr.Error(),
+		}
+	} else {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, &Error{ErrorMessage: "IO Read Error."}
+		}
+		var replay Replay
+		rerr := json.Unmarshal(body, &replay)
+		if rerr != nil {
+
+		}
+		return &replay, nil
+	}
+}
+
+func GetReplayEventOrChunk(url string) (*[]byte, *Error) {
+	c := http.Client{}
+	payload := []byte{}
+
+	req, nerr := http.NewRequest("GET", url, bytes.NewBuffer(payload))
+	if nerr != nil {
+
+	}
+	req.Header.Add("User-Agent", "Tournament replay downloader")
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, &Error{
+			ErrorMessage: nerr.Error(),
+		}
+	} else {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, &Error{ErrorMessage: "IO Read Error."}
+		}
+		return &body, nil
+	}
+}

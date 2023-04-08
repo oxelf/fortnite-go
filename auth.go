@@ -134,7 +134,6 @@ func Get_Token_By_AuthCode(code string, base64Client string, eg1 bool) (*OauthTo
 }
 
 func Create_DeviceAuth(token string, accountId string) (*DeviceAuth, *Error) {
-	fmt.Println("getting device auth")
 	uri := fmt.Sprint("https://account-public-service-prod.ol.epicgames.com/account/api/public/account/" + accountId + "/deviceAuth")
 	data := url.Values{}
 

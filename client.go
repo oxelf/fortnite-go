@@ -33,6 +33,7 @@ type Client struct {
 	needConfirmationCallback  func(*PartyMemberRequireConfirmation)
 	skinChangedCallback       func(string, string)
 	presenceCallback          func(*Presence)
+	xmppMessageCallback       func(*Body)
 }
 type Party struct {
 	Id             string
@@ -53,6 +54,8 @@ type ClientConfig struct {
 	Token string
 	//We need your account Id to open a connection with XMPP.
 	AccountID string
+	//not neccessary
+	DisplayName string
 }
 
 func NewClient(config ClientConfig) (*Client, error) {
@@ -176,21 +179,34 @@ func (client *Client) open(auth string) error {
 	if err != nil {
 		return err
 	}
-	PresenceError := client.SendPresence("Battle Royale Lobby - 1/16")
-	if PresenceError != nil {
-		return err
+	if client.Config.Connection == "Fortnite" {
+
+	} else {
+		PresenceError := client.SendPresence("In the Launcher", false)
+		if PresenceError != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (client *Client) SendPresence(Status string) error {
+func (client *Client) SendPresence(Status string, fortnite bool) error {
 	stamp := time.Now().UTC().Format("2006-01-02T15:04:05.999Z")
-	err := client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<presence><status>{\"Status\":\"%s\",\"bIsPlaying\":true,\"bIsJoinable\":true,\"bHasVoiceSupport\":false,\"ProductName\":\"Fortnite\",\"SessionId\":\"\",\"Properties\":{\"OverrideAppId_s\":\"Fortnite\",\"FortPartySize_i\":1,\"FortSubGame_i\":1,\"InUnjoinableMatch_b\":false}}</status><delay stamp=\"%s\" xmlns=\"urn:xmpp:delay\"/></presence>", Status, stamp)))
-	if err != nil {
-		return err
+	if fortnite {
+		err := client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<presence><status>{\"Status\":\"%s\",\"bIsPlaying\":false,\"bIsJoinable\":false,\"bHasVoiceSupport\":false,\"ProductName\":\"Fortnite\",\"SessionId\":\"\",\"Properties\":{\"OverrideAppId_s\":\"Fortnite\",\"FortPartySize_i\":1,\"FortSubGame_i\":1,\"InUnjoinableMatch_b\":false}}</status><delay stamp=\"%s\" xmlns=\"urn:xmpp:delay\"/></presence>", Status, stamp)))
+		if err != nil {
+			return err
+		} else {
+			return nil
+		}
 	} else {
-		return nil
+		err := client.conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("<presence><status>{\"Status\":\"%s\",\"bIsPlaying\":false,\"bIsJoinable\":false,\"bHasVoiceSupport\":false,\"ProductName\":\"Launcher\",\"SessionId\":\"\",\"Properties\":{}}</status><delay stamp=\"%s\" xmlns=\"urn:xmpp:delay\"/></presence>", Status, stamp)))
+		if err != nil {
+			return err
+		} else {
+			return nil
+		}
 	}
 }
 
@@ -278,7 +294,7 @@ func (c *Client) Listen() {
 				if strings.Contains(presence.From, c.Config.AccountID) {
 					c.JID = presence.From
 				}
-				fmt.Printf("<Presence>: type:%s,\n from: %#v,\n status: %#v", presence.Type, presence.From, status)
+
 				if c != nil {
 					presence.MStatus = *status
 					c.presenceCallback(presence)
@@ -297,6 +313,7 @@ func (c *Client) Listen() {
 				if Uerr != nil {
 					continue
 				}
+				c.xmppMessageCallback(body)
 				switch body.Type {
 				case "USER_BLOCKLIST_UPDATE":
 					var blocklistUpdate BlocklistUpdate
@@ -322,8 +339,7 @@ func (c *Client) Listen() {
 					var party_join PartyJoin
 					err := json.Unmarshal([]byte(jsonString), &party_join)
 					if err != nil {
-						fmt.Println(message.Body.RawJSON)
-						fmt.Println("unmarshalling error.")
+
 						continue
 					}
 					if party_join.AccountID == c.Config.AccountID {
@@ -356,7 +372,7 @@ func (c *Client) Listen() {
 					var party_new_captain PartyNewCaptain
 					err := json.Unmarshal(message.Body.RawJSON, &party_new_captain)
 					if err != nil {
-						fmt.Println("unmarshalling error.")
+
 						continue
 					}
 					if party_new_captain.AccountID != "" {
@@ -364,11 +380,9 @@ func (c *Client) Listen() {
 						c.NewCaptainCallback(&party_new_captain)
 					} else {
 					}
-				case "com.epicgames.social.interactions.notification.v2":
-					fmt.Println("Social interaction notification.")
-					continue
+
 				case "com.epicgames.social.party.notification.v0.PARTY_UPDATED":
-					fmt.Printf("Party updated from: %s, revision: %d", body.AccountDN, body.Revision)
+
 					if body.Revision != 0 {
 						c.Party.PartyRevision = body.Revision
 					}
@@ -392,7 +406,7 @@ func (c *Client) Listen() {
 					var party_member_left PartyMemberLeft
 					err := json.Unmarshal(message.Body.RawJSON, &party_member_left)
 					if err != nil {
-						fmt.Println("unmarshalling error.")
+
 						continue
 					}
 					party_member_left.RawMessage = message.Body.RawJSON
@@ -401,7 +415,7 @@ func (c *Client) Listen() {
 					var friendshipRequest FriendshipRequest
 					err := json.Unmarshal(message.Body.RawJSON, &friendshipRequest)
 					if err != nil {
-						fmt.Println("unmarshalling error.")
+
 						continue
 					}
 					friendshipRequest.RawMessage = message.Body.RawJSON
@@ -410,20 +424,20 @@ func (c *Client) Listen() {
 					var party_member_updated PartyMemberUpdated
 					err := json.Unmarshal(message.Body.RawJSON, &party_member_updated)
 					if err != nil {
-						fmt.Println("unmarshalling error.")
+
 						continue
 					}
 					if party_member_updated.MemberStateUpdated != nil {
 						cosmeticLoadout := UpdatedCosmeticLoadout{}
-						fmt.Println(party_member_updated.MemberStateUpdated["Default:AthenaCosmeticLoadout_j"])
+
 						if party_member_updated.MemberStateUpdated["Default:AthenaCosmeticLoadout_j"] == "" {
-							fmt.Println("cosmetic loadout empty")
+
 							continue
 						} else {
 
 							err := json.Unmarshal([]byte(party_member_updated.MemberStateUpdated["Default:AthenaCosmeticLoadout_j"]), &cosmeticLoadout)
 							if err != nil {
-								fmt.Println(err)
+
 								continue
 							}
 							if cosmeticLoadout.AthenaCosmeticLoadout.Character == "None" || cosmeticLoadout.AthenaCosmeticLoadout.Character == "" {
@@ -483,4 +497,7 @@ func (c *Client) OnMemberRequireConfirmation(callback func(*PartyMemberRequireCo
 }
 func (c *Client) OnSkinChanged(callback func(SkinID string, accountID string)) {
 	c.skinChangedCallback = callback
+}
+func (c *Client) OnXMPPMsg(callback func(*Body)) {
+	c.xmppMessageCallback = callback
 }
